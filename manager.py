@@ -28,18 +28,26 @@ class BotManager(commands.Bot):
         self.manual_stop = set() # {bot_id} to ignore alerts when intentional
 
     async def setup_hook(self):
-        # Load extensions from cogs directory
-        for filename in os.listdir("./cogs"):
-            if filename.endswith(".py") and not filename.startswith("__"):
-                try:
-                    await self.load_extension(f"cogs.{filename[:-3]}")
-                    log.info(f"Loaded extension: {filename}")
-                except Exception as e:
-                    log.error(f"Failed to load extension {filename}: {e}")
+        # Load extensions from cogs directory (relative to script location)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        cogs_dir = os.path.join(base_dir, "cogs")
+        
+        if os.path.exists(cogs_dir):
+            for filename in os.listdir(cogs_dir):
+                if filename.endswith(".py") and not filename.startswith("__"):
+                    try:
+                        await self.load_extension(f"cogs.{filename[:-3]}")
+                        log.info(f"Loaded extension: {filename}")
+                    except Exception as e:
+                        log.error(f"Failed to load extension {filename}: {e}")
+        else:
+            log.error(f"Cogs directory NOT FOUND at {cogs_dir}")
 
         # Sync Slash Commands
         if GUILD_ID:
             guild = discord.Object(id=int(GUILD_ID))
+            # Clear global commands from this bot identity to prevent crossover
+            self.tree.clear_commands(guild=None)
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
             log.info(f"Bot Manager: Slash commands synced to guild {GUILD_ID}.")
