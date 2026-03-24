@@ -28,6 +28,10 @@ class BotManager(commands.Bot):
         self.manual_stop = set() # {bot_id} to ignore alerts when intentional
 
     async def setup_hook(self):
+        # Clear global commands from this bot identity to prevent crossover
+        # DO THIS FIRST before loading extensions/cogs
+        self.tree.clear_commands(guild=None)
+
         # Load extensions from cogs directory (relative to script location)
         base_dir = os.path.dirname(os.path.abspath(__file__))
         cogs_dir = os.path.join(base_dir, "cogs")
@@ -46,8 +50,6 @@ class BotManager(commands.Bot):
         # Sync Slash Commands
         if GUILD_ID:
             guild = discord.Object(id=int(GUILD_ID))
-            # Clear global commands from this bot identity to prevent crossover
-            self.tree.clear_commands(guild=None)
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
             log.info(f"Bot Manager: Slash commands synced to guild {GUILD_ID}.")
