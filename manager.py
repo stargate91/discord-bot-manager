@@ -84,6 +84,9 @@ class BotManager(commands.Bot):
                 
                 # Normalize CWD for comparison
                 norm_cwd = os.path.normpath(cwd).lower()
+                
+                # DEBUG: Log python processes (can be noisy, but needed for debug)
+                log.info(f"DEBUG: Found Python PID {proc.info['pid']} in {norm_cwd} with cmd: {cmd_str}")
 
                 for bot_id, info in config.items():
                     if bot_id in self.managed_processes:
@@ -92,13 +95,20 @@ class BotManager(commands.Bot):
                     target_cmd = info['cmd'].lower()
                     target_path = os.path.normpath(info['path']).lower()
                     
-                    # Match if the target command is part of the cmdline AND it's in the right path
-                    if target_cmd in cmd_str and target_path == norm_cwd:
+                    # Match if the target command is in the cmdline AND (path is exact OR ends with the bot path)
+                    # We check if target_path is a suffix of norm_cwd to handle different drive letters if needed
+                    path_match = (target_path == norm_cwd) or (norm_cwd.endswith(target_path.split(":")[-1].replace("\\", "/").strip("/").lower()))
+                    cmd_match = target_cmd in cmd_str
+                    
+                    log.info(f"DEBUG: Checking {info['name']}: Path match: {path_match} | Cmd match: {cmd_match}")
+                    
+                    if cmd_match and path_match:
                         self.managed_processes[bot_id] = psutil.Process(proc.info['pid'])
                         log.info(f"Connected to existing bot: {info['name']} (PID: {proc.info['pid']})")
                         found_count += 1
                         break
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
+                # log.info(f"DEBUG: Process error for PID {proc.info.get('pid')}: {e}")
                 continue
         
         if found_count > 0:
@@ -115,7 +125,7 @@ class BotManager(commands.Bot):
         count = len(self.load_config())
         activity = discord.Activity(
             type=discord.ActivityType.watching, 
-            name=f"pórázon tartok {count} botot... ⛓️"
+            name=f"Pórázon tartok {count} botot... ⛓️"
         )
         await self.change_presence(activity=activity)
         log.info(f"Bot Manager online. Neural-link active. {self.user}")
