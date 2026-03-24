@@ -35,7 +35,7 @@ class ManagementCog(commands.Cog):
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def update(self, interaction: discord.Interaction, bot_id: str):
-        log.info(f"User {interaction.user} (ID: {interaction.user_id}) requested /update for bot: {bot_id}")
+        log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /update for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         result = await self.bot.run_update(bot_id)
         await interaction.followup.send(result, ephemeral=True)
@@ -45,7 +45,7 @@ class ManagementCog(commands.Cog):
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def restart(self, interaction: discord.Interaction, bot_id: str):
-        log.info(f"User {interaction.user} (ID: {interaction.user_id}) requested /restart for bot: {bot_id}")
+        log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /restart for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         
         config = self.bot.load_config()
@@ -77,7 +77,7 @@ class ManagementCog(commands.Cog):
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def rollback(self, interaction: discord.Interaction, bot_id: str):
-        log.info(f"User {interaction.user} (ID: {interaction.user_id}) requested /rollback for bot: {bot_id}")
+        log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /rollback for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         
         config = self.bot.load_config()
@@ -119,7 +119,7 @@ class ManagementCog(commands.Cog):
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def logs(self, interaction: discord.Interaction, bot_id: str, lines: int = 50):
-        log.info(f"User {interaction.user} (ID: {interaction.user_id}) requested /logs ({lines} lines) for bot: {bot_id}")
+        log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /logs ({lines} lines) for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         
         config = self.bot.load_config()
@@ -161,7 +161,7 @@ class ManagementCog(commands.Cog):
     @app_commands.describe(lines="Lekérendő sorok száma (alapértelmezett: 50, összes: 0)")
     @is_admin_context()
     async def manager_logs(self, interaction: discord.Interaction, lines: int = 50):
-        log.info(f"User {interaction.user} (ID: {interaction.user_id}) requested /manager-logs ({lines} lines)")
+        log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /manager-logs ({lines} lines)")
         await interaction.response.defer(ephemeral=True)
         
         log_path = "manager.log"

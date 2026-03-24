@@ -3,8 +3,9 @@ from discord import app_commands
 from discord.ext import commands
 import os
 import json
+import psutil
+import datetime
 from core.logger import log
-
 from core.utils import is_admin_context
 
 class MonitoringCog(commands.Cog):
@@ -14,9 +15,11 @@ class MonitoringCog(commands.Cog):
     @app_commands.command(name="status", description="Megmutatja a kezelt botok állapotát és erőforrás-használatát.")
     @is_admin_context()
     async def status(self, interaction: discord.Interaction):
-        log.info(f"User {interaction.user} (ID: {interaction.user_id}) requested /status")
-        # We assume the bot restricted it to the right guild/channel already or we add the check
-        # But for now we just implement the logic
+        log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /status")
+        
+        # Defer to prevent timeout
+        await interaction.response.defer(ephemeral=True)
+        
         config = self.bot.load_config()
         if not config:
             await interaction.response.send_message("Nincsenek konfigurált botok.", ephemeral=True)
@@ -68,7 +71,7 @@ class MonitoringCog(commands.Cog):
                 
             msg += f"- **{info['name']}** ({bot_id}):\n  ╰ {status_text}\n  ╰ `Path: {info['path']}`\n"
         
-        await interaction.response.send_message(msg, ephemeral=True)
+        await interaction.followup.send(msg)
 
 async def setup(bot):
     await bot.add_cog(MonitoringCog(bot))
