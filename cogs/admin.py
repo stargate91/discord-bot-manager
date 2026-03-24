@@ -15,15 +15,34 @@ async def bot_id_autocomplete(
     interaction: discord.Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
-    # Simple relative path based on Cwd
     config_file = "config.json"
     if os.path.exists(config_file):
         with open(config_file, "r", encoding="utf-8") as f:
             config = json.load(f)
-        return [
-            app_commands.Choice(name=info["name"], value=bot_id)
-            for bot_id, info in config.items() if current.lower() in info["name"].lower()
-        ][:25]
+        
+        # Group bots by path
+        path_groups = {}
+        for bot_id, info in config.items():
+            path = info["path"]
+            if path not in path_groups:
+                path_groups[path] = []
+            path_groups[path].append((bot_id, info["name"]))
+        
+        choices = []
+        for path, bots in path_groups.items():
+            # If multiple bots share a path, create a combined name
+            if len(bots) > 1:
+                combined_name = " + ".join([b[1] for b in bots])
+                # We use the first bot_id as the representative for the group
+                representative_id = bots[0][0]
+                if current.lower() in combined_name.lower():
+                    choices.append(app_commands.Choice(name=f"📦 {combined_name}", value=representative_id))
+            else:
+                bot_id, name = bots[0]
+                if current.lower() in name.lower():
+                    choices.append(app_commands.Choice(name=name, value=bot_id))
+        
+        return choices[:25]
     return []
 
 class ManagementCog(commands.Cog):

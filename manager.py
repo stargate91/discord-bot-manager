@@ -226,8 +226,8 @@ class BotManager(commands.Bot):
         try:
             # 2. Update code (once per path)
             log.info(f"Updating shared path {target_path} via fetch + reset...")
-            subprocess.run(["git", "fetch", "--all"], cwd=target_path, check=True)
-            subprocess.run(["git", "reset", "--hard", "FETCH_HEAD"], cwd=target_path, check=True)
+            subprocess.run(["git", "fetch", "origin"], cwd=target_path, check=True)
+            subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=target_path, check=True)
             
             # 2b. Auto-pip
             pip_msg = ""
