@@ -168,7 +168,7 @@ class BotManager(commands.Bot):
         path = info["path"]
         
         try:
-            # 1. Kill existing
+            # 1. Kill existing process FIRST to avoid file locks on Windows
             existing_proc = self.managed_processes.get(bot_id)
             if existing_proc and existing_proc.is_running():
                 self.manual_stop.add(bot_id)
@@ -177,9 +177,14 @@ class BotManager(commands.Bot):
                     existing_proc.wait(timeout=5)
                 except psutil.TimeoutExpired:
                     existing_proc.kill()
+                # Wait a bit for file locks to release
+                await asyncio.sleep(1)
 
-            # 2. Git Pull
-            pull_result = subprocess.check_output(["git", "pull"], cwd=path, stderr=subprocess.STDOUT).decode('utf-8')
+            # 2. Update code using a more robust method than 'pull'
+            # fetch + reset --hard avoids merge conflicts and is more reliable on Windows
+            log.info(f"Updating {info['name']} via fetch + reset...")
+            subprocess.run(["git", "fetch", "--all"], cwd=path, check=True)
+            subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=path, check=True)
             
             # 3. Auto-pip
             pip_msg = ""
@@ -203,7 +208,7 @@ class BotManager(commands.Bot):
             )
             self.managed_processes[bot_id] = psutil.Process(new_proc.pid)
             
-            return f"✅ **Frissítés sikeres!**\n\n**Git kimenet:**\n```\n{pull_result}\n```" + pip_msg + f"\n\nBot újraindítva (PID: {new_proc.pid})."
+            return f"✅ **Frissítés sikeres!** (fetch + reset --hard)" + pip_msg + f"\n\nBot újraindítva (PID: {new_proc.pid})."
         except Exception as e:
             return f"❌ Hiba történt: {str(e)}"
 
