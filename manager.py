@@ -201,9 +201,16 @@ class BotManager(commands.Bot):
                     pip_msg = f"\n\n**❌ Pip Install Hiba:** `{str(pip_err)}`"
 
             # 4. Restart
+            # Create a clean environment for the bot to avoid inheriting the Manager's token
+            bot_env = os.environ.copy()
+            # Remove Manager-specific environment variables that might conflict
+            for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
+                bot_env.pop(key, None)
+
             new_proc = subprocess.Popen(
                 info["cmd"].split(), 
                 cwd=path, 
+                env=bot_env,
                 creationflags=0x08000000 if os.name == 'nt' else 0
             )
             self.managed_processes[bot_id] = psutil.Process(new_proc.pid)
