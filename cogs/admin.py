@@ -185,8 +185,9 @@ class ManagementCog(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         
         try:
-            # 1. Git Pull
-            pull_result = subprocess.check_output(["git", "pull"], stderr=subprocess.STDOUT).decode('utf-8')
+            # 1. Git Update (Robust method)
+            subprocess.run(["git", "fetch", "--all"], check=True)
+            pull_result = subprocess.check_output(["git", "reset", "--hard", "FETCH_HEAD"], stderr=subprocess.STDOUT).decode('utf-8')
             
             # 2. Pip Install
             pip_msg = ""
