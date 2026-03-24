@@ -92,15 +92,17 @@ class BotManager(commands.Bot):
                     if bot_id in self.managed_processes:
                         continue # Already tracking
                     
-                    target_cmd = info['cmd'].lower()
+                    # Instead of matching the entire command (which includes 'python'), 
+                    # we match everything EXCEPT the first part (the executable)
+                    target_parts = info['cmd'].lower().split()
+                    target_args = " ".join(target_parts[1:]) if len(target_parts) > 1 else target_parts[0]
                     target_path = os.path.normpath(info['path']).lower()
                     
-                    # Match if the target command is in the cmdline AND (path is exact OR ends with the bot path)
-                    # We check if target_path is a suffix of norm_cwd to handle different drive letters if needed
+                    # Match if the target args are in the cmdline AND (path is exact OR ends with the bot path)
                     path_match = (target_path == norm_cwd) or (norm_cwd.endswith(target_path.split(":")[-1].replace("\\", "/").strip("/").lower()))
-                    cmd_match = target_cmd in cmd_str
+                    cmd_match = target_args in cmd_str
                     
-                    log.info(f"DEBUG: Checking {info['name']}: Path match: {path_match} | Cmd match: {cmd_match}")
+                    log.info(f"DEBUG: Checking {info['name']}: Path match: {path_match} | Args ('{target_args}') in cmd? {cmd_match}")
                     
                     if cmd_match and path_match:
                         self.managed_processes[bot_id] = psutil.Process(proc.info['pid'])
