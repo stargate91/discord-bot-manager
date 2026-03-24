@@ -47,6 +47,8 @@ class BotManager(commands.Bot):
             await self.tree.sync()
             log.info("Bot Manager: Slash commands synced globally.")
         
+        # Discover already running bots
+        self.discover_existing_processes()
         self.check_processes.start()
 
     def load_config(self):
@@ -54,6 +56,55 @@ class BotManager(commands.Bot):
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         return {}
+
+    def discover_existing_processes(self):
+        """Scans running processes to find bots defined in config."""
+        config = self.load_config()
+        if not config:
+            return
+
+        log.info("Scanning for existing bot processes...")
+        found_count = 0
+        
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cwd']):
+            try:
+                cmdline = proc.info['cmdline']
+                if not cmdline or len(cmdline) < 2:
+                    continue
+                
+                # Check if it's a python process
+                if 'python' not in cmdline[0].lower():
+                    continue
+                
+                # Full command line as a string for easier matching
+                cmd_str = " ".join(cmdline).lower()
+                cwd = proc.info['cwd']
+                if not cwd:
+                    continue
+                
+                # Normalize CWD for comparison
+                norm_cwd = os.path.normpath(cwd).lower()
+
+                for bot_id, info in config.items():
+                    if bot_id in self.managed_processes:
+                        continue # Already tracking
+                    
+                    target_cmd = info['cmd'].lower()
+                    target_path = os.path.normpath(info['path']).lower()
+                    
+                    # Match if the target command is part of the cmdline AND it's in the right path
+                    if target_cmd in cmd_str and target_path == norm_cwd:
+                        self.managed_processes[bot_id] = psutil.Process(proc.info['pid'])
+                        log.info(f"Connected to existing bot: {info['name']} (PID: {proc.info['pid']})")
+                        found_count += 1
+                        break
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+        
+        if found_count > 0:
+            log.info(f"Discovery complete. Found {found_count} running bots.")
+        else:
+            log.info("No matching bot processes found.")
 
     def save_config(self, config):
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
