@@ -159,65 +159,110 @@ class BotManager(commands.Bot):
                 if not process or not process.is_running():
                     self.manual_stop.remove(bot_id)
 
-    async def run_update(self, bot_id):
+    async def run_restart(self, bot_id):
+        """Restarts a bot, or a group of bots if they share the same path."""
         config = self.load_config()
         if bot_id not in config:
             return "❌ A megadott Bot ID nem szerepel a konfigurációban."
 
-        info = config[bot_id]
-        path = info["path"]
+        target_path = config[bot_id]["path"]
+        related_bots = [bid for bid, info in config.items() if info["path"] == target_path]
         
-        try:
-            # 1. Kill existing process FIRST to avoid file locks on Windows
-            existing_proc = self.managed_processes.get(bot_id)
+        results = []
+        for bid in related_bots:
+            info = config[bid]
+            try:
+                # 1. Stop
+                existing_proc = self.managed_processes.get(bid)
+                if existing_proc and existing_proc.is_running():
+                    self.manual_stop.add(bid)
+                    existing_proc.terminate()
+                    try:
+                        existing_proc.wait(timeout=5)
+                    except psutil.TimeoutExpired:
+                        existing_proc.kill()
+                    await asyncio.sleep(0.5)
+
+                # 2. Restart (Clean Env)
+                bot_env = os.environ.copy()
+                for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
+                    bot_env.pop(key, None)
+
+                new_proc = subprocess.Popen(
+                    info["cmd"].split(), 
+                    cwd=info["path"], 
+                    env=bot_env,
+                    creationflags=0x08000000 if os.name == 'nt' else 0
+                )
+                self.managed_processes[bid] = psutil.Process(new_proc.pid)
+                results.append(f"✅ **{info['name']}** újraindítva (PID: {new_proc.pid})")
+            except Exception as e:
+                results.append(f"❌ **{info['name']}** hiba: {str(e)}")
+
+        return "\n".join(results)
+
+    async def run_update(self, bot_id):
+        """Updates and restarts all bots sharing the same path."""
+        config = self.load_config()
+        if bot_id not in config:
+            return "❌ A megadott Bot ID nem szerepel a konfigurációban."
+
+        target_path = config[bot_id]["path"]
+        related_bots = [bid for bid, info in config.items() if info["path"] == target_path]
+        
+        # 1. Stop all related bots first
+        for bid in related_bots:
+            existing_proc = self.managed_processes.get(bid)
             if existing_proc and existing_proc.is_running():
-                self.manual_stop.add(bot_id)
+                self.manual_stop.add(bid)
                 existing_proc.terminate()
                 try:
                     existing_proc.wait(timeout=5)
                 except psutil.TimeoutExpired:
                     existing_proc.kill()
-                # Wait a bit for file locks to release
-                await asyncio.sleep(1)
+        
+        await asyncio.sleep(1) # Wait for file handles to release
 
-            # 2. Update code using a more robust method than 'pull'
-            # fetch + reset --hard FETCH_HEAD ensures we reset to what was just fetched
-            log.info(f"Updating {info['name']} via fetch + reset FETCH_HEAD...")
-            subprocess.run(["git", "fetch", "--all"], cwd=path, check=True)
-            subprocess.run(["git", "reset", "--hard", "FETCH_HEAD"], cwd=path, check=True)
+        try:
+            # 2. Update code (once per path)
+            log.info(f"Updating shared path {target_path} via fetch + reset...")
+            subprocess.run(["git", "fetch", "--all"], cwd=target_path, check=True)
+            subprocess.run(["git", "reset", "--hard", "FETCH_HEAD"], cwd=target_path, check=True)
             
-            # 3. Auto-pip
+            # 2b. Auto-pip
             pip_msg = ""
-            req_path = os.path.join(path, "requirements.txt")
+            req_path = os.path.join(target_path, "requirements.txt")
             if os.path.exists(req_path):
                 try:
                     pip_result = subprocess.check_output(
                         [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], 
-                        cwd=path, 
+                        cwd=target_path, 
                         stderr=subprocess.STDOUT
                     ).decode('utf-8')
-                    pip_msg = "\n\n**📦 Pip Install:**\n```\n" + (pip_result[-500:] if len(pip_result) > 500 else pip_result) + "\n```"
+                    pip_msg = "\n\n**📦 Pip Install:**\n```\n" + (pip_result[-300:] if len(pip_result) > 300 else pip_result) + "\n```"
                 except Exception as pip_err:
                     pip_msg = f"\n\n**❌ Pip Install Hiba:** `{str(pip_err)}`"
 
-            # 4. Restart
-            # Create a clean environment for the bot to avoid inheriting the Manager's token
-            bot_env = os.environ.copy()
-            # Remove Manager-specific environment variables that might conflict
-            for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
-                bot_env.pop(key, None)
+            # 3. Restart all related bots
+            results = [f"✅ **Frissítés sikeres a közös mappában!** (FETCH_HEAD)" + pip_msg]
+            for bid in related_bots:
+                info = config[bid]
+                bot_env = os.environ.copy()
+                for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
+                    bot_env.pop(key, None)
 
-            new_proc = subprocess.Popen(
-                info["cmd"].split(), 
-                cwd=path, 
-                env=bot_env,
-                creationflags=0x08000000 if os.name == 'nt' else 0
-            )
-            self.managed_processes[bot_id] = psutil.Process(new_proc.pid)
+                new_proc = subprocess.Popen(
+                    info["cmd"].split(), 
+                    cwd=info["path"], 
+                    env=bot_env,
+                    creationflags=0x08000000 if os.name == 'nt' else 0
+                )
+                self.managed_processes[bid] = psutil.Process(new_proc.pid)
+                results.append(f"🚀 **{info['name']}** újraindítva (PID: {new_proc.pid})")
             
-            return f"✅ **Frissítés sikeres!** (fetch + reset --hard)" + pip_msg + f"\n\nBot újraindítva (PID: {new_proc.pid})."
+            return "\n".join(results)
         except Exception as e:
-            return f"❌ Hiba történt: {str(e)}"
+            return f"❌ Hiba történt a frissítés során: {str(e)}"
 
 if __name__ == "__main__":
     bot = BotManager()

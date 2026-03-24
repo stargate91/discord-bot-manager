@@ -48,29 +48,8 @@ class ManagementCog(commands.Cog):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /restart for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         
-        config = self.bot.load_config()
-        if bot_id not in config:
-            await interaction.followup.send("❌ Ismeretlen Bot ID.", ephemeral=True)
-            return
-            
-        info = config[bot_id]
-        path = info["path"]
-        
-        try:
-            existing_proc = self.bot.managed_processes.get(bot_id)
-            if existing_proc and existing_proc.is_running():
-                self.bot.manual_stop.add(bot_id)
-                existing_proc.terminate()
-            
-            new_proc = subprocess.Popen(
-                info["cmd"].split(), 
-                cwd=path, 
-                creationflags=0x08000000 if os.name == 'nt' else 0
-            )
-            self.bot.managed_processes[bot_id] = psutil.Process(new_proc.pid)
-            await interaction.followup.send(f"✅ **{info['name']}** újraindítva (PID: {new_proc.pid}).", ephemeral=True)
-        except Exception as e:
-            await interaction.followup.send(f"❌ Hiba: {str(e)}", ephemeral=True)
+        result = await self.bot.run_restart(bot_id)
+        await interaction.followup.send(result, ephemeral=True)
 
     @app_commands.command(name="rollback", description="Visszaállítja a botot az előző Git állapotra (HEAD@{1}).")
     @app_commands.describe(bot_id="Válassz egy botot a listából")
