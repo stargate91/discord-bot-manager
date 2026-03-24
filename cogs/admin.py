@@ -11,7 +11,7 @@ from collections import deque
 from core.utils import is_admin_context
 from core.logger import log
 
-def bot_id_autocomplete(
+async def bot_id_autocomplete(
     interaction: discord.Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
