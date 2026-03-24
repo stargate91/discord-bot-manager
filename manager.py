@@ -184,7 +184,10 @@ class BotManager(commands.Bot):
             # fetch + reset --hard avoids merge conflicts and is more reliable on Windows
             log.info(f"Updating {info['name']} via fetch + reset...")
             subprocess.run(["git", "fetch", "--all"], cwd=path, check=True)
-            subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=path, check=True)
+            # Detect current branch automatically (handles main/master/etc.)
+            branch_proc = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=path, capture_output=True, text=True, check=True)
+            current_branch = branch_proc.stdout.strip()
+            subprocess.run(["git", "reset", "--hard", f"origin/{current_branch}"], cwd=path, check=True)
             
             # 3. Auto-pip
             pip_msg = ""
