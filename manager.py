@@ -181,13 +181,10 @@ class BotManager(commands.Bot):
                 await asyncio.sleep(1)
 
             # 2. Update code using a more robust method than 'pull'
-            # fetch + reset --hard avoids merge conflicts and is more reliable on Windows
-            log.info(f"Updating {info['name']} via fetch + reset...")
+            # fetch + reset --hard FETCH_HEAD ensures we reset to what was just fetched
+            log.info(f"Updating {info['name']} via fetch + reset FETCH_HEAD...")
             subprocess.run(["git", "fetch", "--all"], cwd=path, check=True)
-            # Detect current branch automatically (handles main/master/etc.)
-            branch_proc = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=path, capture_output=True, text=True, check=True)
-            current_branch = branch_proc.stdout.strip()
-            subprocess.run(["git", "reset", "--hard", f"origin/{current_branch}"], cwd=path, check=True)
+            subprocess.run(["git", "reset", "--hard", "FETCH_HEAD"], cwd=path, check=True)
             
             # 3. Auto-pip
             pip_msg = ""
