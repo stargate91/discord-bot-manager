@@ -53,6 +53,14 @@ class MonitoringCog(commands.Cog):
                     cpu = proc.cpu_percent(interval=None)
                     ram_mb = proc.memory_info().rss / 1024 / 1024
                     
+                    # Disk I/O (Read + Write)
+                    try:
+                        io = proc.io_counters()
+                        disk_mb = (io.read_bytes + io.write_bytes) / 1024 / 1024
+                        disk_text = f" | 💾 HDD: `{disk_mb:.1f} MB`"
+                    except (psutil.AccessDenied, AttributeError):
+                        disk_text = ""
+                    
                     # Uptime calculation
                     create_time = proc.create_time()
                     uptime_sec = datetime.datetime.now().timestamp() - create_time
@@ -63,7 +71,7 @@ class MonitoringCog(commands.Cog):
                     else:
                         uptime_str = f"{int(uptime_sec / 60)} perce"
                     
-                    status_text = f"🟢 Fut ({uptime_str}) | PID: {proc.pid} | 💻 CPU: `{cpu}%` | 🧠 RAM: `{ram_mb:.1f} MB`"
+                    status_text = f"🟢 Fut ({uptime_str}) | PID: {proc.pid} | 💻 CPU: `{cpu}%` | 🧠 RAM: `{ram_mb:.1f} MB`{disk_text}"
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     status_text = "🟡 Állapot bizonytalan (Access Denied)"
             else:

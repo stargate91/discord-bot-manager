@@ -84,9 +84,6 @@ class BotManager(commands.Bot):
                 
                 # Normalize CWD for comparison
                 norm_cwd = os.path.normpath(cwd).lower()
-                
-                # DEBUG: Log python processes (can be noisy, but needed for debug)
-                log.info(f"DEBUG: Found Python PID {proc.info['pid']} in {norm_cwd} with cmd: {cmd_str}")
 
                 for bot_id, info in config.items():
                     if bot_id in self.managed_processes:
@@ -101,8 +98,6 @@ class BotManager(commands.Bot):
                     # Match if the target args are in the cmdline AND (path is exact OR ends with the bot path)
                     path_match = (target_path == norm_cwd) or (norm_cwd.endswith(target_path.split(":")[-1].replace("\\", "/").strip("/").lower()))
                     cmd_match = target_args in cmd_str
-                    
-                    log.info(f"DEBUG: Checking {info['name']}: Path match: {path_match} | Args ('{target_args}') in cmd? {cmd_match}")
                     
                     if cmd_match and path_match:
                         self.managed_processes[bot_id] = psutil.Process(proc.info['pid'])
