@@ -20,27 +20,34 @@ async def bot_id_autocomplete(
         with open(config_file, "r", encoding="utf-8") as f:
             config = json.load(f)
         
-        # Group bots by path
-        path_groups = {}
-        for bot_id, info in config.items():
-            path = info["path"]
-            if path not in path_groups:
-                path_groups[path] = []
-            path_groups[path].append((bot_id, info["name"]))
-        
         choices = []
-        for path, bots in path_groups.items():
-            # If multiple bots share a path, create a combined name
-            if len(bots) > 1:
-                combined_name = " + ".join([b[1] for b in bots])
-                # We use the first bot_id as the representative for the group
-                representative_id = bots[0][0]
-                if current.lower() in combined_name.lower():
-                    choices.append(app_commands.Choice(name=f"📦 {combined_name}", value=representative_id))
-            else:
-                bot_id, name = bots[0]
+        is_logs_command = interaction.command and interaction.command.name == "logs"
+
+        if is_logs_command:
+            # For logs, return individual bots
+            for bot_id, info in config.items():
+                name = info["name"]
                 if current.lower() in name.lower():
                     choices.append(app_commands.Choice(name=name, value=bot_id))
+        else:
+            # For update/restart, group bots by path
+            path_groups = {}
+            for bot_id, info in config.items():
+                path = info["path"]
+                if path not in path_groups:
+                    path_groups[path] = []
+                path_groups[path].append((bot_id, info["name"]))
+            
+            for path, bots in path_groups.items():
+                if len(bots) > 1:
+                    combined_name = " + ".join([b[1] for b in bots])
+                    representative_id = bots[0][0]
+                    if current.lower() in combined_name.lower():
+                        choices.append(app_commands.Choice(name=f"📦 {combined_name}", value=representative_id))
+                else:
+                    bot_id, name = bots[0]
+                    if current.lower() in name.lower():
+                        choices.append(app_commands.Choice(name=name, value=bot_id))
         
         return choices[:25]
     return []

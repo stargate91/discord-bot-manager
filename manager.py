@@ -187,11 +187,23 @@ class BotManager(commands.Bot):
                 bot_env = os.environ.copy()
                 for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
                     bot_env.pop(key, None)
+                
+                # Signal the bot to skip its own FileHandler
+                bot_env["MANAGED_LOGGING"] = "1"
+                bot_env["INSTANCE_NAME"] = info["cmd"].split()[-1] # Ensure INSTANCE_NAME is set for logger
+
+                # Redirect output to the log file defined in config
+                log_file_path = os.path.join(info["path"], info.get("log", "bot.log"))
+                os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+                
+                log_file = open(log_file_path, "a", encoding="utf-8")
 
                 new_proc = subprocess.Popen(
                     info["cmd"].split(), 
                     cwd=info["path"], 
                     env=bot_env,
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
                     creationflags=0x08000000 if os.name == 'nt' else 0
                 )
                 self.managed_processes[bid] = psutil.Process(new_proc.pid)
@@ -226,8 +238,21 @@ class BotManager(commands.Bot):
         try:
             # 2. Update code (once per path)
             log.info(f"Updating shared path {target_path} via fetch + reset...")
-            subprocess.run(["git", "fetch", "origin"], cwd=target_path, check=True)
-            subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=target_path, check=True)
+            norm_path = os.path.normpath(os.path.abspath(target_path))
+            
+            # Clean up any stale git locks first to avoid 128/1 errors on Windows
+            lock_path = os.path.join(norm_path, ".git", "index.lock")
+            if os.path.exists(lock_path):
+                try:
+                    os.remove(lock_path)
+                    log.info(f"Removed stale git lock: {lock_path}")
+                except:
+                    pass
+
+            # Fetch origin explicitly
+            subprocess.run(["git", "fetch", "origin"], cwd=norm_path, check=True)
+            # Reset to origin/main (verified to exist for the radio bot)
+            subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=norm_path, check=True)
             
             # 2b. Auto-pip
             pip_msg = ""
@@ -243,22 +268,33 @@ class BotManager(commands.Bot):
                 except Exception as pip_err:
                     pip_msg = f"\n\n**❌ Pip Install Hiba:** `{str(pip_err)}`"
 
-            # 3. Restart all related bots
-            results = [f"✅ **Frissítés sikeres a közös mappában!** (FETCH_HEAD)" + pip_msg]
-            for bid in related_bots:
-                info = config[bid]
-                bot_env = os.environ.copy()
-                for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
-                    bot_env.pop(key, None)
+                # 3. Restart all related bots
+                results = [f"✅ **Frissítés sikeres a közös mappában!** (FETCH_HEAD)" + pip_msg]
+                for bid in related_bots:
+                    info = config[bid]
+                    bot_env = os.environ.copy()
+                    for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
+                        bot_env.pop(key, None)
 
-                new_proc = subprocess.Popen(
-                    info["cmd"].split(), 
-                    cwd=info["path"], 
-                    env=bot_env,
-                    creationflags=0x08000000 if os.name == 'nt' else 0
-                )
-                self.managed_processes[bid] = psutil.Process(new_proc.pid)
-                results.append(f"🚀 **{info['name']}** újraindítva (PID: {new_proc.pid})")
+                    # Signal the bot to skip its own FileHandler
+                    bot_env["MANAGED_LOGGING"] = "1"
+                    bot_env["INSTANCE_NAME"] = info["cmd"].split()[-1]
+
+                    # Redirect output to the log file defined in config
+                    log_file_path = os.path.join(info["path"], info.get("log", "bot.log"))
+                    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+                    log_file = open(log_file_path, "a", encoding="utf-8")
+
+                    new_proc = subprocess.Popen(
+                        info["cmd"].split(), 
+                        cwd=info["path"], 
+                        env=bot_env,
+                        stdout=log_file,
+                        stderr=subprocess.STDOUT,
+                        creationflags=0x08000000 if os.name == 'nt' else 0
+                    )
+                    self.managed_processes[bid] = psutil.Process(new_proc.pid)
+                    results.append(f"🚀 **{info['name']}** újraindítva (PID: {new_proc.pid})")
             
             return "\n".join(results)
         except Exception as e:
