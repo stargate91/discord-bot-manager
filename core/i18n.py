@@ -48,18 +48,24 @@ class LocalizationService:
             log.error(f"Error formatting translation key '{key}': {e}")
             return str(text)
 
-    def localize_commands(self, tree, messages, guild=None):
+    def localize_commands(self, tree, guild=None):
         """This function translates the names and descriptions of our Discord commands."""
-        commands = tree.get_commands(guild=guild)
-        for cmd in commands:
-            # We look for a description key like 'desc_status'
-            key = f"desc_{cmd.name.replace('-', '_')}"
-            if key in self.translations:
-                cmd.description = self.translations[key]
-            
-            # Parameteters (like 'bot_id') can also have descriptions
-            if hasattr(cmd, '_params'):
-                for param_name, param in cmd._params.items():
-                    param_key = f"desc_param_{param_name.replace('-', '_')}"
-                    if param_key in self.translations:
-                        param.description = self.translations[param_key]
+        try:
+            # We get the commands for the specified guild (or global ones)
+            commands = tree.get_commands(guild=guild)
+            for cmd in commands:
+                # 1. Translate Command Description
+                # We look for a description key like 'desc_status'
+                key = f"desc_{cmd.name.replace('-', '_')}"
+                if key in self.translations:
+                    cmd.description = self.translations[key]
+                
+                # 2. Translate Parameters
+                # AppCommand objects have a 'parameters' attribute
+                if hasattr(cmd, 'parameters'):
+                    for param in cmd.parameters:
+                        param_key = f"desc_param_{param.name.replace('-', '_')}"
+                        if param_key in self.translations:
+                            param.description = self.translations[param_key]
+        except Exception as e:
+            log.error(f"Error during command localization: {e}")

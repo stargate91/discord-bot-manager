@@ -104,17 +104,24 @@ class BotManager(commands.Bot):
                         log.error(f"Failed to load extension {filename}: {e}")
         
         # We 'sync' the slash commands so they show up in Discord
-        if self.guild_id:
-            guild = discord.Object(id=int(self.guild_id))
-            self.tree.copy_global_to(guild=guild)
-            # We translate the commands before syncing
-            self.i18n.localize_commands(self.tree, guild)
-            await self.tree.sync(guild=guild)
-            log.info(f"Bot Manager: Slash commands synced to guild {self.guild_id}.")
-        else:
-            self.i18n.localize_commands(self.tree)
-            await self.tree.sync()
-            log.info("Bot Manager: Slash commands synced globally.")
+        try:
+            if self.guild_id:
+                guild = discord.Object(id=int(self.guild_id))
+                self.tree.copy_global_to(guild=guild)
+                # We translate the commands before syncing
+                log.info("Localizing commands...")
+                self.i18n.localize_commands(self.tree, guild=guild)
+                log.info("Syncing commands to guild...")
+                await self.tree.sync(guild=guild)
+                log.info(f"Bot Manager: Slash commands synced to guild {self.guild_id}.")
+            else:
+                log.info("Localizing global commands...")
+                self.i18n.localize_commands(self.tree)
+                log.info("Syncing global commands...")
+                await self.tree.sync()
+                log.info("Bot Manager: Slash commands synced globally.")
+        except Exception as e:
+            log.error(f"Failed to sync slash commands: {e}")
         
         # We check if any bots are already running on the computer
         self.process_manager.discover_processes()
