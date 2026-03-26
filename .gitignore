@@ -39,10 +39,6 @@ temp_logs.txt
 *.db
 *.sqlite3
 
-# Project specific
-config.json
-!config.json.example
-
 # OS generated files
 .DS_Store
 .DS_Store?

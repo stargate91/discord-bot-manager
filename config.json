@@ -1,0 +1,39 @@
+{
+    "settings": {
+        "guild_id": "1083433370815582240",
+        "admin_channel_id": "1486516075905417216"
+    },
+    "bot_settings": {
+        "language": "hu",
+        "command_prefix": "!",
+        "command_suffix": "_b",
+        "check_interval_seconds": 60,
+        "git_branch": "origin/main",
+        "stop_timeout": 5,
+        "restart_wait": 1.0,
+        "manager_log_file": "manager.log",
+        "bot_log_default": "bot.log",
+        "log_max_bytes": 5242880,
+        "log_backup_count": 3
+    },
+    "bots": {
+        "1353195232675926017": {
+            "name": "CheekyElf",
+            "path": "C:/discord_activity_watcher_bot",
+            "cmd": "python bot.py",
+            "log": "activity_bot.log"
+        },
+        "1473068888055873697": {
+            "name": "Ava",
+            "path": "C:/dc_radio_bot",
+            "cmd": "python main.py 1",
+            "log": "data/1_radio.log"
+        },
+        "1483519378841665728": {
+            "name": "Zea",
+            "path": "C:/dc_radio_bot",
+            "cmd": "python main.py 2",
+            "log": "data/2_radio.log"
+        }
+    }
+}
