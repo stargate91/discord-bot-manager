@@ -1,17 +1,20 @@
 from dataclasses import dataclass
 from typing import Optional
 
+# This is a 'Data Class' - it's a simple way to store data in an object
 @dataclass
 class BotConfig:
     id: str
-    name: str
-    path: str
-    cmd: str
-    log: Optional[str] = None
-    description: Optional[str] = None
+    name: str    # The name of the bot
+    path: str    # Where the bot files are located on the disk
+    cmd: str     # The command we run to start it (like 'python bot.py')
+    log: Optional[str] = None # Where the bot saves its logs
+    description: Optional[str] = None # A short text about what the bot does
 
     @classmethod
     def from_dict(cls, bot_id: str, data: dict, default_log: str = "bot.log") -> 'BotConfig':
+        """This function takes a dictionary and turns it into a BotConfig object."""
+        # We use .get() so the bot doesn't crash if a piece of information is missing
         return cls(
             id=bot_id,
             name=data.get("name", "Unknown"),

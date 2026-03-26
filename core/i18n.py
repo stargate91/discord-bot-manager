@@ -2,53 +2,62 @@ import os
 import json
 from core.logger import log
 
+# This class helps us show the bot in different languages (like Hungarian or English)
 class LocalizationService:
     def __init__(self, default_lang="hu"):
         self.default_lang = default_lang
         self.current_lang = default_lang
         self.translations = {}
+        # We load the default language when we start
         self.load_translations(default_lang)
 
     def load_translations(self, lang):
-        """Loads translations from messages_{lang}.json or messages.json for 'hu'."""
+        """This function loads the right language file (messages.json or messages_en.json)."""
         self.current_lang = lang
+        # Hungarian is special, it uses the main messages.json file
         file_name = "messages.json" if lang == "hu" else f"messages_{lang}.json"
         
         if os.path.exists(file_name):
             try:
                 with open(file_name, "r", encoding="utf-8") as f:
+                    # We load the JSON data and update our dictionary
                     new_data = json.load(f)
                     self.translations.clear()
                     self.translations.update(new_data)
                 log.info(f"Loaded {len(self.translations)} translation keys for language: {lang}")
             except Exception as e:
+                # If something goes wrong, we go back to Hungarian as a backup
                 log.error(f"Failed to load translations for {lang}: {e}")
                 if lang != "hu":
-                    self.load_translations("hu") # Fallback
+                    self.load_translations("hu") 
         else:
+            # If the file is missing, we also use Hungarian as a backup
             log.warning(f"Translation file {file_name} not found. Falling back to default.")
             if lang != "hu":
                 self.load_translations("hu")
 
     def get(self, key, default=None, **kwargs):
-        """Returns the translated string for the given key, formatted with kwargs."""
+        """This function gets a translated text and fills in any variables."""
+        # We look for the 'key' in our dictionary
         text = self.translations.get(key, default or key)
         try:
+            # .format(**kwargs) replaces things like {name} with real values
             return str(text).format(**kwargs)
         except Exception as e:
+            # If we messed up the formatting, just return the plain text
             log.error(f"Error formatting translation key '{key}': {e}")
             return str(text)
 
     def localize_commands(self, tree, messages, guild=None):
-        """Patches command descriptions in the command tree."""
+        """This function translates the names and descriptions of our Discord commands."""
         commands = tree.get_commands(guild=guild)
         for cmd in commands:
-            # Update command description
+            # We look for a description key like 'desc_status'
             key = f"desc_{cmd.name.replace('-', '_')}"
             if key in self.translations:
                 cmd.description = self.translations[key]
             
-            # Update parameter descriptions
+            # Parameteters (like 'bot_id') can also have descriptions
             if hasattr(cmd, '_params'):
                 for param_name, param in cmd._params.items():
                     param_key = f"desc_param_{param_name.replace('-', '_')}"
