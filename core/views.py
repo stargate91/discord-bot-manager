@@ -31,20 +31,21 @@ class ModernStatusView(discord.ui.LayoutView):
         container.add_item(discord.ui.Separator())
         
         # 3. Managed Bots Header
-        container.add_item(discord.ui.TextDisplay(f"## {self.i18n.get('bots_status_header', 'Managed Bots')}"))
+        # We use the header directly from i18n since it already contains '###'
+        bots_header = self.i18n.get('bots_status_header', '### Managed Bots')
+        container.add_item(discord.ui.TextDisplay(bots_header))
         
         if not bots_stats:
-            container.add_item(discord.ui.TextDisplay("*No bots currently managed.*"))
+            container.add_item(discord.ui.TextDisplay(f"* {self.i18n.get('error_no_bots_configured', 'No bots configured.')}*"))
         else:
             for b_id, b_info in bots_stats.items():
                 b_name = b_info["name"]
                 b_status = b_info["status"]
                 
-                # We use a simple bullet for bot status
-                # status_emoji = "🟢" if b_info["is_running"] else "🔴"
-                # The user asked for minimal emoji, so we use text/formatting
+                # Header for each bot
                 b_header = f"**{b_name}** ({b_id})"
                 
+                # Status and resource details
                 if b_info["is_running"]:
                     b_details = f"{b_status} • {b_info['uptime']}\nPID: `{b_info['pid']}` • CPU: **{b_info['cpu']}%** • RAM: **{b_info['ram']:.1f} MB**"
                 else:
@@ -52,8 +53,8 @@ class ModernStatusView(discord.ui.LayoutView):
                 
                 container.add_item(discord.ui.TextDisplay(f"{b_header}\n{b_details}"))
                 
-                # Path info in a subtle way
-                container.add_item(discord.ui.TextDisplay(f"╰ `Path: {b_info['path']}`"))
+                # Path info with a simple bullet
+                container.add_item(discord.ui.TextDisplay(f"╰ Path: `{b_info['path']}`"))
                 
                 # Add a separator between bots, except the last one
                 container.add_item(discord.ui.Separator())

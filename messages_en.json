@@ -1,9 +1,9 @@
 {
     "activity_text": "Watching {count} bots... ⛓️",
     "bot_stopped_alert": "🚨 **ALERT:** **{name}** ({id}) has stopped unexpectedly!\nWould you like me to restart it? Use `/restart bot_id:{id}` command.",
-    "manager_status_header": "### 🛡️ Manager Status",
-    "manager_status_line": "- **{name}**: {status} ({uptime}) | 💻 CPU: `{cpu}%` | 🧠 RAM: `{ram} MB`",
-    "bots_status_header": "### 🤖 Managed Bots",
+    "manager_status_header": "### Manager Status",
+    "manager_status_line": "- **{name}**: {status} ({uptime}) | CPU: `{cpu}%` | RAM: `{ram} MB`",
+    "bots_status_header": "### Managed Bots",
     "bot_status_line": "- **{name}** ({id}):\n  ╰ {status_text}\n  ╰ `Path: {path}`",
     "uptime_days": "{d} days ago",
     "uptime_hours": "{h} hours ago",
@@ -46,5 +46,5 @@
     "desc_param_bot_id": "Select a bot from the list",
     "desc_param_lines": "Number of lines to fetch (default: 50, all: 0)",
     "default_manager_name": "Bot Manager",
-    "bot_status_running_detail": "{status} ({uptime}) | PID: {pid} | 💻 CPU: `{cpu}%` | 🧠 RAM: `{ram} MB`{disk}"
+    "bot_status_running_detail": "{status} ({uptime}) | PID: {pid} | CPU: `{cpu}%` | RAM: `{ram} MB`{disk}"
 }

@@ -1,9 +1,9 @@
 {
     "activity_text": "Pórázon tartok {count} botot... ⛓️",
     "bot_stopped_alert": "🚨 **ALERTI:** A(z) **{name}** ({id}) hirtelen leállt!\nSzeretnéd, hogy újraindítsam? Használd a `/restart bot_id:{id}` parancsot.",
-    "manager_status_header": "### 🛡️ Manager Állapot",
-    "manager_status_line": "- **{name}**: {status} ({uptime}) | 💻 CPU: `{cpu}%` | 🧠 RAM: `{ram} MB`",
-    "bots_status_header": "### 🤖 Kezelt Botok",
+    "manager_status_header": "### Manager Állapot",
+    "manager_status_line": "- **{name}**: {status} ({uptime}) | CPU: `{cpu}%` | RAM: `{ram} MB`",
+    "bots_status_header": "### Kezelt Botok",
     "bot_status_line": "- **{name}** ({id}):\n  ╰ {status_text}\n  ╰ `Path: {path}`",
     "uptime_days": "{d} napja",
     "uptime_hours": "{h} órája",
@@ -46,5 +46,5 @@
     "desc_param_bot_id": "Válassz egy botot a listából",
     "desc_param_lines": "Lekérendő sorok száma (alapértelmezett: 50, összes: 0)",
     "default_manager_name": "Bot Manager",
-    "bot_status_running_detail": "{status} ({uptime}) | PID: {pid} | 💻 CPU: `{cpu}%` | 🧠 RAM: `{ram} MB`{disk}"
+    "bot_status_running_detail": "{status} ({uptime}) | PID: {pid} | CPU: `{cpu}%` | RAM: `{ram} MB`{disk}"
 }
