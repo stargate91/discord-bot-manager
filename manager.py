@@ -114,25 +114,9 @@ class BotManager(commands.Bot):
                     except Exception as e:
                         log.error(f"Failed to load extension {filename}: {e}")
         
-        # We 'sync' the slash commands so they show up in Discord
-        try:
-            if self.guild_id:
-                guild = discord.Object(id=int(self.guild_id))
-                self.tree.copy_global_to(guild=guild)
-                # We translate the commands before syncing
-                log.info("Localizing commands...")
-                self.i18n.localize_commands(self.tree, guild=guild)
-                log.info("Syncing commands to guild...")
-                await self.tree.sync(guild=guild)
-                log.info(f"Bot Manager: Slash commands synced to guild {self.guild_id}.")
-            else:
-                log.info("Localizing global commands...")
-                self.i18n.localize_commands(self.tree)
-                log.info("Syncing global commands...")
-                await self.tree.sync()
-                log.info("Bot Manager: Slash commands synced globally.")
-        except Exception as e:
-            log.error(f"Failed to sync slash commands: {e}")
+        # Synchronizing slash commands can take a long time on startup.
+        # Instead, we now use the manual '!sync' or '/sync' commands in the admin channel.
+        log.info(f"Extensions loaded. Use {self.command_prefix}sync to propagate slash commands to Discord.")
         
         # We check if any bots are already running on the computer
         self.process_manager.discover_processes()

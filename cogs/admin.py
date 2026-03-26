@@ -258,5 +258,67 @@ class ManagementCog(commands.Cog):
             log.error(f"Manager update failed: {e}")
             await interaction.followup.send(self.bot.i18n.get("error_update_general", "Error during update: {error}", error=str(e)), ephemeral=True)
 
+    @commands.command(name="sync")
+    @commands.guild_only()
+    async def sync_prefix(self, ctx: commands.Context, spec: str | None = None):
+        """[Admin] Sync slash commands manually (guild/global/copy)."""
+        # Safety check: only allow in admin channel if configured
+        admin_channel_id = getattr(self.bot, 'admin_channel_id', None)
+        if admin_channel_id and str(ctx.channel.id) != str(admin_channel_id):
+            return
+
+        # 1. Localize commands before syncing
+        self.bot.i18n.localize_commands(self.bot.tree, guild=ctx.guild if spec != "global" else None)
+
+        if spec == "global":
+            synced = await self.bot.tree.sync()
+            await ctx.send(f"✅ Synced {len(synced)} commands globally (may take up to 1 hour to propagate).")
+        elif spec == "copy":
+            self.bot.tree.copy_global_to(guild=ctx.guild)
+            synced = await self.bot.tree.sync(guild=ctx.guild)
+            await ctx.send(f"✅ Copied global and synced {len(synced)} commands to this guild.")
+        else:
+            # Sync only to this guild (immediate)
+            synced = await self.bot.tree.sync(guild=ctx.guild)
+            await ctx.send(f"✅ Synced {len(synced)} commands to this guild.")
+
+    @commands.command(name="clear_commands")
+    @commands.guild_only()
+    async def clear_commands_prefix(self, ctx: commands.Context):
+        """[Admin] Emergency clear of all slash commands."""
+        admin_channel_id = getattr(self.bot, 'admin_channel_id', None)
+        if admin_channel_id and str(ctx.channel.id) != str(admin_channel_id):
+            return
+
+        # Clear Global
+        self.bot.tree.clear_commands(guild=None)
+        await self.bot.tree.sync(guild=None)
+        # Clear Guild
+        self.bot.tree.clear_commands(guild=ctx.guild)
+        await self.bot.tree.sync(guild=ctx.guild)
+        
+        await ctx.send("✅ All slash commands cleared. Use `!sync` to restore them.")
+
+    @app_commands.command(name="sync", description="[Admin] Sync slash commands manually.")
+    @app_commands.describe(mode="guild (instant), global (slow), or copy")
+    @is_admin_context()
+    async def sync_slash(self, interaction: discord.Interaction, mode: str = "guild"):
+        log.info(f"User {interaction.user} requested /sync mode={mode}")
+        await interaction.response.defer(ephemeral=True)
+
+        # 1. Localize commands before syncing
+        self.bot.i18n.localize_commands(self.bot.tree, guild=interaction.guild if mode != "global" else None)
+
+        if mode == "global":
+            synced = await self.bot.tree.sync()
+            await interaction.followup.send(f"Synced {len(synced)} commands globally.", ephemeral=True)
+        elif mode == "copy":
+            self.bot.tree.copy_global_to(guild=interaction.guild)
+            synced = await self.bot.tree.sync(guild=interaction.guild)
+            await interaction.followup.send(f"Copied global and synced {len(synced)} commands to this guild.", ephemeral=True)
+        else:
+            synced = await self.bot.tree.sync(guild=interaction.guild)
+            await interaction.followup.send(f"Synced {len(synced)} commands to this guild.", ephemeral=True)
+
 async def setup(bot):
     await bot.add_cog(ManagementCog(bot))
