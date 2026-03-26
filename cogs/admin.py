@@ -276,15 +276,18 @@ class ManagementCog(commands.Cog):
 
         if spec == "global":
             synced = await self.bot.tree.sync()
-            await ctx.send(f"✅ Synced {len(synced)} commands globally (may take up to 1 hour to propagate).")
+            msg = self.bot.i18n.get("sync_success_global", "Synced {count} commands globally.", count=len(synced))
+            await ctx.send(msg)
         elif spec == "copy":
             self.bot.tree.copy_global_to(guild=ctx.guild)
             synced = await self.bot.tree.sync(guild=ctx.guild)
-            await ctx.send(f"✅ Copied global and synced {len(synced)} commands to this guild.")
+            msg = self.bot.i18n.get("sync_success_copy", "Synced {count} commands to guild.", count=len(synced))
+            await ctx.send(msg)
         else:
             # Sync only to this guild (immediate)
             synced = await self.bot.tree.sync(guild=ctx.guild)
-            await ctx.send(f"✅ Synced {len(synced)} commands to this guild.")
+            msg = self.bot.i18n.get("sync_success_guild", "Synced {count} commands to guild.", count=len(synced))
+            await ctx.send(msg)
 
     @commands.command(name="clear_commands")
     @commands.guild_only()
@@ -301,7 +304,7 @@ class ManagementCog(commands.Cog):
         self.bot.tree.clear_commands(guild=ctx.guild)
         await self.bot.tree.sync(guild=ctx.guild)
         
-        await ctx.send("✅ All slash commands cleared. Use `!sync` to restore them.")
+        await ctx.send(self.bot.i18n.get("clear_commands_success", "All commands cleared."))
 
     @app_commands.command(name="sync", description="[Admin] Sync slash commands manually.")
     @app_commands.describe(mode="guild (instant), global (slow), or copy")
@@ -315,14 +318,17 @@ class ManagementCog(commands.Cog):
 
         if mode == "global":
             synced = await self.bot.tree.sync()
-            await interaction.followup.send(f"Synced {len(synced)} commands globally.", ephemeral=True)
+            msg = self.bot.i18n.get("sync_success_global", "Synced {count} commands globally.", count=len(synced))
+            await interaction.followup.send(msg, ephemeral=True)
         elif mode == "copy":
             self.bot.tree.copy_global_to(guild=interaction.guild)
             synced = await self.bot.tree.sync(guild=interaction.guild)
-            await interaction.followup.send(f"Copied global and synced {len(synced)} commands to this guild.", ephemeral=True)
+            msg = self.bot.i18n.get("sync_success_copy", "Synced {count} commands to guild.", count=len(synced))
+            await interaction.followup.send(msg, ephemeral=True)
         else:
             synced = await self.bot.tree.sync(guild=interaction.guild)
-            await interaction.followup.send(f"Synced {len(synced)} commands to this guild.", ephemeral=True)
+            msg = self.bot.i18n.get("sync_success_guild", "Synced {count} commands to guild.", count=len(synced))
+            await interaction.followup.send(msg, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(ManagementCog(bot))

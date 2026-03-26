@@ -203,7 +203,7 @@ class BotManager(commands.Bot):
                 # 3. Start the process using our service
                 new_pid = self.process_manager.start_process(b.id, b, bot_env)
                 
-                success_msg = self.i18n.get("bot_restarted_simple", "", name=b.name, pid=new_pid)
+                success_msg = self.i18n.get("restart_success", "", name=b.name, pid=new_pid)
                 results.append(success_msg)
                 # Log it in the admin channel too
                 await self.notify_admin(self.i18n.get("bot_restarted_log", "Bot {name} ({id}) restarted.", name=b.name, id=b.id))
@@ -250,7 +250,7 @@ class BotManager(commands.Bot):
                 bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
 
                 new_pid = self.process_manager.start_process(b.id, b, bot_env)
-                restart_msg = self.i18n.get("bot_restarted_simple", "", name=b.name, pid=new_pid)
+                restart_msg = self.i18n.get("restart_success", "", name=b.name, pid=new_pid)
                 results.append(restart_msg)
                 await self.notify_admin(self.i18n.get("bot_restarted_log", "Bot {name} ({id}) restarted.", name=b.name, id=b.id))
             

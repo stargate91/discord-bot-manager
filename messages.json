@@ -47,5 +47,17 @@
     "desc_param_bot_id": "Válassz egy botot a listából",
     "desc_param_lines": "Lekérendő sorok száma (alapértelmezett: 50, összes: 0)",
     "default_manager_name": "Bot Manager",
-    "bot_status_running_detail": "{status} ({uptime}) | PID: {pid} | CPU: `{cpu}%` | RAM: `{ram} MB`{disk}"
+    "bot_status_running_detail": "{status} ({uptime}) | PID: {pid} | CPU: `{cpu}%` | RAM: `{ram} MB`{disk}",
+    "sync_success_global": "✅ **{count}** parancs globálisan szinkronizálva (akár 1 órát is igénybe vehet).",
+    "sync_success_copy": "✅ Globális parancsok másolva és **{count}** parancs szinkronizálva a szerverre.",
+    "sync_success_guild": "✅ **{count}** parancs szinkronizálva a szerverre.",
+    "clear_commands_success": "✅ Minden slash parancs törölve. Használd a `!sync` parancsot a visszaállításhoz.",
+    "status_error": "❌ **STATUS ERROR**\n{error}",
+    "manager_status_layout": "# {name}\n{status} • {uptime}",
+    "manager_resource_usage": "CPU: **{cpu}%** • RAM: **{ram} MB**",
+    "bot_header_layout": "**{name}** ({id})",
+    "bot_status_running_layout": "{status} • {uptime}\nPID: `{pid}` • CPU: **{cpu}%** • RAM: **{ram} MB**",
+    "bot_path_layout": "╰ Path: `{path}`",
+    "error_no_requirements": "Requirements.txt nem található.",
+    "error_git_update_failed": "Git frissítés sikertelen."
 }

@@ -17,15 +17,16 @@ class ModernStatusView(discord.ui.LayoutView):
         m_status = self.i18n.get("status_running", "Running")
         m_uptime = manager_stats["uptime"]
         
+        m_header = self.i18n.get("manager_status_layout", "# {name}\n{status} • {uptime}", name=m_name, status=m_status, uptime=m_uptime)
         container.add_item(discord.ui.Section(
-            f"# {m_name}\n{m_status} • {m_uptime}",
+            m_header,
             accessory=discord.ui.Thumbnail(self.bot_manager.user.display_avatar.url)
         ))
         
         container.add_item(discord.ui.Separator())
         
         # 2. Manager Stats
-        m_stats_text = f"CPU: **{manager_stats['cpu']}%** • RAM: **{manager_stats['ram']:.1f} MB**"
+        m_stats_text = self.i18n.get("manager_resource_usage", "CPU: **{cpu}%** • RAM: **{ram} MB**", cpu=manager_stats['cpu'], ram=manager_stats['ram'])
         container.add_item(discord.ui.TextDisplay(m_stats_text))
         
         container.add_item(discord.ui.Separator())
@@ -43,18 +44,20 @@ class ModernStatusView(discord.ui.LayoutView):
                 b_status = b_info["status"]
                 
                 # Header for each bot
-                b_header = f"**{b_name}** ({b_id})"
+                b_header = self.i18n.get("bot_header_layout", "**{name}** ({id})", name=b_name, id=b_id)
                 
                 # Status and resource details
                 if b_info["is_running"]:
-                    b_details = f"{b_status} • {b_info['uptime']}\nPID: `{b_info['pid']}` • CPU: **{b_info['cpu']}%** • RAM: **{b_info['ram']:.1f} MB**"
+                    b_details = self.i18n.get("bot_status_running_layout", "{status} • {uptime}", 
+                        status=b_status, uptime=b_info['uptime'], pid=b_info['pid'], cpu=b_info['cpu'], ram=b_info['ram'])
                 else:
                     b_details = f"*{b_status}*"
                 
                 container.add_item(discord.ui.TextDisplay(f"{b_header}\n{b_details}"))
                 
                 # Path info with a simple bullet
-                container.add_item(discord.ui.TextDisplay(f"╰ Path: `{b_info['path']}`"))
+                b_path_text = self.i18n.get("bot_path_layout", "╰ Path: `{path}`", path=b_info['path'])
+                container.add_item(discord.ui.TextDisplay(b_path_text))
                 
                 # Add a separator between bots, except the last one
                 container.add_item(discord.ui.Separator())

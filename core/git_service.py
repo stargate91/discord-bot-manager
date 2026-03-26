@@ -76,7 +76,8 @@ class GitService:
         req_path = os.path.join(path, "requirements.txt")
         # If there is no requirements file, there is nothing to install
         if not os.path.exists(req_path):
-            return True, "No requirements.txt found."
+            msg = self.messages.get("error_no_requirements", "No requirements.txt found.")
+            return True, msg
             
         try:
             # We run 'pip install' just like we would in a terminal

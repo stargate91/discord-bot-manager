@@ -96,7 +96,7 @@ class MonitoringCog(commands.Cog):
         except Exception as e:
             log.error(f"Error in /status modern layout: {e}", exc_info=True)
             # Fallback to simple message if the modern layout fails
-            msg = "# STATUS ERROR\n" + str(e)
+            msg = self.bot.i18n.get("status_error", "Status Error: {error}", error=str(e))
             await interaction.followup.send(msg, ephemeral=True)
 
 async def setup(bot):

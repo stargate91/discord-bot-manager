@@ -47,5 +47,17 @@
     "desc_param_bot_id": "Select a bot from the list",
     "desc_param_lines": "Number of lines to fetch (default: 50, all: 0)",
     "default_manager_name": "Bot Manager",
-    "bot_status_running_detail": "{status} ({uptime}) | PID: {pid} | CPU: `{cpu}%` | RAM: `{ram} MB`{disk}"
+    "bot_status_running_detail": "{status} ({uptime}) | PID: {pid} | CPU: `{cpu}%` | RAM: `{ram} MB`{disk}",
+    "sync_success_global": "✅ **{count}** commands synced globally (may take up to 1 hour to propagate).",
+    "sync_success_copy": "✅ Global commands copied and **{count}** commands synced to this guild.",
+    "sync_success_guild": "✅ **{count}** commands synced to this guild.",
+    "clear_commands_success": "✅ All slash commands cleared. Use `!sync` to restore them.",
+    "status_error": "❌ **STATUS ERROR**\n{error}",
+    "manager_status_layout": "# {name}\n{status} • {uptime}",
+    "manager_resource_usage": "CPU: **{cpu}%** • RAM: **{ram} MB**",
+    "bot_header_layout": "**{name}** ({id})",
+    "bot_status_running_layout": "{status} • {uptime}\nPID: `{pid}` • CPU: **{cpu}%** • RAM: **{ram} MB**",
+    "bot_path_layout": "╰ Path: `{path}`",
+    "error_no_requirements": "No requirements.txt found.",
+    "error_git_update_failed": "Git update failed."
 }
