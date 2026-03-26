@@ -16,13 +16,18 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 # This is the name of our configuration file
-CONFIG_FILE = "config.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 
 # This is our main 'Bot Manager' - it's like a boss that controls other bots
 class BotManager(commands.Bot):
     def __init__(self):
         # First, we load the configuration from the config.json file
+        log.info(f"Loading configuration from: {CONFIG_FILE}")
         self.config = self.load_json(CONFIG_FILE)
+        
+        if not self.config:
+            log.error(f"CRITICAL: Configuration file not found or empty at {CONFIG_FILE}")
         
         # We separate the settings into smaller groups for easier access
         settings = self.config.get("settings", {})
@@ -74,8 +79,13 @@ class BotManager(commands.Bot):
     def load_json(self, file_path):
         """This helper function loads a JSON file and returns a dictionary."""
         if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                log.error(f"Error reading JSON from {file_path}: {e}")
+                return {}
+        log.warning(f"File not found: {file_path}")
         return {}
 
     def save_config(self, config):
