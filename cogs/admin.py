@@ -66,7 +66,7 @@ class ManagementCog(commands.Cog):
     async def update(self, interaction: discord.Interaction, bot_id: str):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /update for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
-        result = await self.bot.run_update(bot_id)
+        result = await self.bot.management_service.run_update(bot_id)
         if len(result) > 1900:
             result = result[:1000] + "\n\n... [TRUNCATED] ...\n\n" + result[-800:]
         await interaction.followup.send(result, ephemeral=True)
@@ -79,7 +79,7 @@ class ManagementCog(commands.Cog):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /restart for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         
-        result = await self.bot.run_restart(bot_id)
+        result = await self.bot.management_service.run_restart(bot_id)
         await interaction.followup.send(result, ephemeral=True)
 
     @app_commands.command(name="rollback", description="Rollback bot to previous Git state (HEAD@{1}).")
@@ -90,31 +90,8 @@ class ManagementCog(commands.Cog):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /rollback for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         
-        if bot_id not in self.bot.bots:
-            await interaction.followup.send(str(self.bot.i18n.get("error_unknown_bot", "Unknown Bot ID.")), ephemeral=True)
-            return
-            
-        bot = self.bot.bots[bot_id]
-        
-        try:
-            # 1. Rollback via GitService (Run in thread to avoid blocking)
-            success, result_msg = await asyncio.to_thread(self.bot.git_service.rollback_repo, bot.path)
-            
-            if not success:
-                await interaction.followup.send(f"Error: {result_msg}", ephemeral=True)
-                return
-
-            # 2. Restart via ProcessManager
-            await self.bot.process_manager.stop_process(bot_id)
-            new_pid = self.bot.process_manager.start_process(bot_id, bot, {}) # Pass empty env or handle in manager
-            
-            success_msg = self.bot.i18n.get("rollback_success", "",
-                output=result_msg,
-                pid=new_pid
-            )
-            await interaction.followup.send(success_msg, ephemeral=True)
-        except Exception as e:
-            await interaction.followup.send(self.bot.i18n.get("error_rollback", "Error during rollback: {error}", error=str(e)), ephemeral=True)
+        result = await self.bot.management_service.run_rollback(bot_id)
+        await interaction.followup.send(result, ephemeral=True)
 
     @app_commands.command(name="logs", description="Get last N lines of a bot log file.")
     @app_commands.describe(bot_id="The ID of the bot", lines="Number of lines (default: 50, all: 0)")
@@ -205,11 +182,7 @@ class ManagementCog(commands.Cog):
         msg = self.bot.i18n.get("manager_restart_msg", "Restarting {name}... ", name=self.bot.manager_name)
         await interaction.response.send_message(msg, ephemeral=True)
         
-        # Save restart flag
-        os.makedirs("tmp", exist_ok=True)
-        with open(os.path.join("tmp", "manager_restart.json"), "w") as f:
-            json.dump({"restart": True}, f)
-            
+        self.bot.management_service.prepare_manager_restart()
         os.execv(sys.executable, ['python'] + sys.argv)
 
     @app_commands.command(name="manager-update", description="[Admin] Git pull, pip install and restart Bot Manager.")
@@ -222,40 +195,25 @@ class ManagementCog(commands.Cog):
         results = []
         
         try:
-            # 1. Update code via GitService (Run in thread)
-            up_success, up_msg = await asyncio.to_thread(self.bot.git_service.update_repo, manager_path, self.bot.git_branch)
-            results.append(up_msg)
+            success, output = await self.bot.management_service.run_manager_update()
             
-            if not up_success:
-                error_msg = self.bot.i18n.get("error_git_update_failed", "Git update failed.")
-                await interaction.followup.send(f"{error_msg}\n{up_msg}", ephemeral=True)
+            if not success:
+                error_prefix = self.bot.i18n.get("error_git_update_failed", "Git update failed.")
+                await interaction.followup.send(f"{error_prefix}\n{output}", ephemeral=True)
                 return
 
-            # 2. Install dependencies (Run in thread)
-            pip_success, pip_msg = await asyncio.to_thread(self.bot.git_service.install_dependencies, manager_path)
-            results.append(pip_msg)
-
-            # 3. Final response and restart
-            update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting...", name=self.bot.manager_name, output="")
-            results.append(update_status)
+            # Final response and restart
+            update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting...", name=self.bot.manager_name, output=output)
             
-            # Combine all results, making sure we don't exceed Discord's 2000 char limit
-            # If any single message is too long, we truncate it but keep the most relevant parts (the end)
-            final_msg = ""
-            for res in results:
-                if len(res) > 900: # 900 for each main block (Git/Pip) to stay safe
-                    res = res[:400] + "\n... [TRUNCATED] ...\n" + res[-400:]
-                final_msg += res + "\n"
+            # Truncate if needed
+            if len(update_status) > 1900:
+                update_status = update_status[:1000] + "\n... [TRUNCATED] ...\n" + update_status[-800:]
                 
-            await interaction.followup.send(final_msg, ephemeral=True)
+            await interaction.followup.send(update_status, ephemeral=True)
             
             log.info("Manager updated, restarting process...")
+            self.bot.management_service.prepare_manager_restart()
             
-            # Save restart flag for on_ready notification
-            os.makedirs("tmp", exist_ok=True)
-            with open(os.path.join("tmp", "manager_restart.json"), "w") as f:
-                json.dump({"restart": True}, f)
-                
             await asyncio.sleep(1) # Wait for message to send
             os.execv(sys.executable, ['python'] + sys.argv)
         except Exception as e:

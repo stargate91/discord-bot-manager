@@ -10,6 +10,7 @@ from core.process_manager import ProcessManager
 from core.git_service import GitService
 from core.models import BotConfig
 from core.i18n import LocalizationService
+from core.management_service import ManagementService
 
 # We load our secrets from the .env file
 load_dotenv()
@@ -60,11 +61,18 @@ class BotManager(commands.Bot):
         # Which Git branch we should use for updates
         self.git_branch = bot_settings.get("git_branch", "origin/main")
         
-        # We turn all our bots into 'BotConfig' objects
-        default_log = bot_settings.get("bot_log_default", "bot.log")
-        raw_bots = self.config.get("bots", {})
         self.bots = {bid: BotConfig.from_dict(bid, bdata, default_log) for bid, bdata in raw_bots.items()}
         log.info(f"Initialized manager with {len(self.bots)} bots. Guild ID: {self.guild_id}")
+
+        # We initialize the ManagementService to handle high-level logic (Update & Restart)
+        self.management_service = ManagementService(
+            self.config, 
+            self.i18n, 
+            self.process_manager, 
+            self.git_service, 
+            self.bots,
+            notify_admin_cb=self.notify_admin
+        )
 
     @property
     def manager_name(self):
@@ -175,90 +183,6 @@ class BotManager(commands.Bot):
                     alert_msg = self.i18n.get("bot_stopped_alert", "", name=bot.name, id=bot_id)
                     await channel.send(alert_msg)
 
-    async def run_restart(self, bot_id):
-        """This function restarts a bot (or several if they are in the same folder)."""
-        if bot_id not in self.bots:
-            return self.i18n.get("error_id_not_found", "Bot ID not found in config.")
-
-        bot = self.bots[bot_id]
-        # We find other bots that share the same folder, because they usually use the same code
-        related_bots = [b for b in self.bots.values() if b.path == bot.path]
-        
-        results = []
-        for b in related_bots:
-            try:
-                # 1. Stop the bot carefully
-                await self.process_manager.stop_process(b.id)
-
-                # 2. We prepare the 'environment' (variables) for the new bot process
-                bot_env = os.environ.copy()
-                # We don't want the manager's secret tokens to leak to the other bots
-                for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
-                    bot_env.pop(key, None)
-                
-                # Tell the bot it's being managed
-                bot_env["MANAGED_LOGGING"] = "1"
-                bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
-
-                # 3. Start the process using our service
-                new_pid = self.process_manager.start_process(b.id, b, bot_env)
-                
-                success_msg = self.i18n.get("restart_success", "", name=b.name, pid=new_pid)
-                results.append(success_msg)
-                # Log it in the admin channel too
-                await self.notify_admin(self.i18n.get("bot_restarted_log", "Bot {name} ({id}) restarted.", name=b.name, id=b.id))
-            except Exception as e:
-                # If something fails, we catch the error here
-                error_msg = self.i18n.get("restart_error", "", name=b.name, error=str(e))
-                results.append(error_msg)
-
-        return "\n".join(results)
-
-    async def run_update(self, bot_id):
-        """This function downloads the latest code and then restarts the bots."""
-        if bot_id not in self.bots:
-            return self.i18n.get("error_id_not_found", "Bot ID not found in config.")
-
-        bot = self.bots[bot_id]
-        related_bots = [b for b in self.bots.values() if b.path == bot.path]
-        
-        # 1. Stop all the bots that use this folder first
-        for b in related_bots:
-            await self.process_manager.stop_process(b.id)
-        
-        results = []
-        try:
-            # 2. We use GitService to update the code (this runs in a separate 'thread' to stay fast)
-            log.info(f"Updating code at: {bot.path}")
-            up_success, up_msg = await asyncio.to_thread(self.git_service.update_repo, bot.path, self.git_branch)
-            results.append(up_msg)
-            
-            if not up_success:
-                results.append(self.i18n.get("error_git_update_failed", "Git update failed."))
-            else:
-                # 3. We install any new libraries the bot might need
-                pip_success, pip_msg = await asyncio.to_thread(self.git_service.install_dependencies, bot.path)
-                results.append(pip_msg)
-
-            # 4. Now we start all the bots back up
-            for b in related_bots:
-                bot_env = os.environ.copy()
-                for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
-                    bot_env.pop(key, None)
-
-                bot_env["MANAGED_LOGGING"] = "1"
-                bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
-
-                new_pid = self.process_manager.start_process(b.id, b, bot_env)
-                restart_msg = self.i18n.get("restart_success", "", name=b.name, pid=new_pid)
-                results.append(restart_msg)
-                await self.notify_admin(self.i18n.get("bot_restarted_log", "Bot {name} ({id}) restarted.", name=b.name, id=b.id))
-            
-            return "\n".join(results)
-        except Exception as e:
-            # If the update process crashes, we log the error here
-            log.error(f"Update error: {e}")
-            return self.i18n.get("error_update_general", "Error during update: {error}", error=str(e))
 
 # This is where the program starts!
 if __name__ == "__main__":
