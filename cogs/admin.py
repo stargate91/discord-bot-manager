@@ -232,7 +232,7 @@ class ManagementCog(commands.Cog):
             results.append(pip_msg)
 
             # 3. Final response and restart
-            update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting...")
+            update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting...", name=self.bot.manager_name, output="")
             results.append(update_status)
             
             # Combine all results, making sure we don't exceed Discord's 2000 char limit
