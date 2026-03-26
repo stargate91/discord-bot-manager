@@ -1,0 +1,27 @@
+{
+    "settings": {
+        "guild_id": "YOUR_SERVER_ID",
+        "admin_channel_id": "YOUR_ADMIN_CHANNEL_ID"
+    },
+    "bot_settings": {
+        "language": "hu",
+        "command_prefix": "!",
+        "command_suffix": "_b",
+        "check_interval_seconds": 60,
+        "git_branch": "origin/main",
+        "stop_timeout": 5,
+        "restart_wait": 1.0,
+        "manager_log_file": "manager.log",
+        "bot_log_default": "bot.log",
+        "log_max_bytes": 5242880,
+        "log_backup_count": 3
+    },
+    "bots": {
+        "RANDOM_ID_1": {
+            "name": "BotName",
+            "path": "C:/path_to_bot",
+            "cmd": "python bot.py",
+            "log": "bot.log"
+        }
+    }
+}
