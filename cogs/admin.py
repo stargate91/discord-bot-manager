@@ -63,6 +63,8 @@ class ManagementCog(commands.Cog):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /update for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         result = await self.bot.run_update(bot_id)
+        if len(result) > 1900:
+            result = result[:1000] + "\n\n... [TRUNCATED] ...\n\n" + result[-800:]
         await interaction.followup.send(result, ephemeral=True)
 
     @app_commands.command(name="restart", description="Restart a bot without update.")
@@ -230,8 +232,18 @@ class ManagementCog(commands.Cog):
             results.append(pip_msg)
 
             # 3. Final response and restart
-            results.append(self.bot.i18n.get("manager_update_success", "Manager updated. Restarting..."))
-            await interaction.followup.send("\n".join(results), ephemeral=True)
+            update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting...")
+            results.append(update_status)
+            
+            # Combine all results, making sure we don't exceed Discord's 2000 char limit
+            # If any single message is too long, we truncate it but keep the most relevant parts (the end)
+            final_msg = ""
+            for res in results:
+                if len(res) > 900: # 900 for each main block (Git/Pip) to stay safe
+                    res = res[:400] + "\n... [TRUNCATED] ...\n" + res[-400:]
+                final_msg += res + "\n"
+                
+            await interaction.followup.send(final_msg, ephemeral=True)
             
             log.info("Manager updated, restarting process...")
             
