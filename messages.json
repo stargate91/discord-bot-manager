@@ -17,6 +17,7 @@
     "manager_logs_header": "📄 **Bot Manager** utolsó {lines} sora:",
     "manager_logs_full_header": "📄 **Bot Manager** teljes logja:",
     "manager_restart_msg": "🔄 **{name}** újraindítása...",
+    "manager_online_log": "🛡️ **{name}** ismét online és figyeli a botokat!",
     "manager_update_success": "✅ **{name} frissítve!**\n```\n{output}\n```",
     "pip_updated": "\n📦 **Pip frissítve.**\n```\n{output}\n```",
     "pip_error": "\n⚠️ **Pip hiba:** `{error}`",

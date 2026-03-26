@@ -17,6 +17,7 @@
     "manager_logs_header": "📄 **Bot Manager** last {lines} lines:",
     "manager_logs_full_header": "📄 **Bot Manager** full log:",
     "manager_restart_msg": "🔄 Restarting **{name}**...",
+    "manager_online_log": "🛡️ **{name}** is back online and monitoring!",
     "manager_update_success": "✅ **{name} updated!**\n```\n{output}\n```",
     "pip_updated": "\n📦 **Pip updated.**\n```\n{output}\n```",
     "pip_error": "\n⚠️ **Pip error:** `{error}`",
