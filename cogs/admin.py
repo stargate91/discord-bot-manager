@@ -221,7 +221,7 @@ class ManagementCog(commands.Cog):
             results.append(up_msg)
             
             if not up_success:
-                error_msg = str(self.bot.messages.get("error_git_update_failed", "Git update failed."))
+                error_msg = self.bot.i18n.get("error_git_update_failed", "Git update failed.")
                 await interaction.followup.send(f"{error_msg}\n{up_msg}", ephemeral=True)
                 return
 
