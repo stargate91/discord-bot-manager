@@ -2,7 +2,12 @@ import logging
 import sys
 from logging.handlers import RotatingFileHandler
 
-def setup_logger(name="BotManager"):
+# Default configuration (can be moved to a config loader if needed)
+LOG_FILE = 'manager.log'
+MAX_BYTES = 5*1024*1024
+BACKUP_COUNT = 3
+
+def setup_logger(name="BotManager", log_file=LOG_FILE, max_bytes=MAX_BYTES, backup_count=BACKUP_COUNT):
     # Create logger
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
@@ -17,8 +22,8 @@ def setup_logger(name="BotManager"):
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
-        # File Handler (Rotating log: max 5MB, keep 3 backups)
-        file_handler = RotatingFileHandler('manager.log', maxBytes=5*1024*1024, backupCount=3, encoding='utf-8')
+        # File Handler (Rotating log)
+        file_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=backup_count, encoding='utf-8')
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 

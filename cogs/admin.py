@@ -6,7 +6,6 @@ import json
 import asyncio
 import subprocess
 import sys
-import psutil
 from collections import deque
 from core.utils import is_admin_context
 from core.logger import log
@@ -15,49 +14,49 @@ async def bot_id_autocomplete(
     interaction: discord.Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
-    config_file = "config.json"
-    if os.path.exists(config_file):
-        with open(config_file, "r", encoding="utf-8") as f:
-            config = json.load(f)
-        
-        choices = []
-        is_logs_command = interaction.command and interaction.command.name == "logs"
+    bot_manager = interaction.client # The main bot instance (BotManager)
+    
+    choices = []
+    is_logs_command = interaction.command and interaction.command.name == "logs"
+    
+    # Access the BotConfig objects directly from bot_manager.bots
+    bots_data = bot_manager.bots
 
-        if is_logs_command:
-            # For logs, return individual bots
-            for bot_id, info in config.items():
-                name = info["name"]
+    if is_logs_command:
+        # For logs, return individual bots
+        for bot_id, bot_config in bots_data.items():
+            name = bot_config.name
+            if current.lower() in name.lower():
+                choices.append(app_commands.Choice(name=name, value=bot_id))
+    else:
+        # For update/restart/rollback, group bots by path
+        path_groups = {}
+        for bot_id, bot_config in bots_data.items():
+            path = bot_config.path
+            if path not in path_groups:
+                path_groups[path] = []
+            path_groups[path].append((bot_id, bot_config.name))
+        
+        for path, bots_in_group in path_groups.items():
+            if len(bots_in_group) > 1:
+                combined_name = " + ".join([b[1] for b in bots_in_group])
+                # Use the ID of the first bot in the group as the representative value
+                representative_id = bots_in_group[0][0] 
+                if current.lower() in combined_name.lower():
+                    choices.append(app_commands.Choice(name=combined_name, value=representative_id))
+            else:
+                bot_id, name = bots_in_group[0]
                 if current.lower() in name.lower():
                     choices.append(app_commands.Choice(name=name, value=bot_id))
-        else:
-            # For update/restart, group bots by path
-            path_groups = {}
-            for bot_id, info in config.items():
-                path = info["path"]
-                if path not in path_groups:
-                    path_groups[path] = []
-                path_groups[path].append((bot_id, info["name"]))
-            
-            for path, bots in path_groups.items():
-                if len(bots) > 1:
-                    combined_name = " + ".join([b[1] for b in bots])
-                    representative_id = bots[0][0]
-                    if current.lower() in combined_name.lower():
-                        choices.append(app_commands.Choice(name=f"📦 {combined_name}", value=representative_id))
-                else:
-                    bot_id, name = bots[0]
-                    if current.lower() in name.lower():
-                        choices.append(app_commands.Choice(name=name, value=bot_id))
-        
-        return choices[:25]
-    return []
+    
+    return choices[:25]
 
 class ManagementCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="update", description="Git pull és újraindítás egy botnál ID alapján.")
-    @app_commands.describe(bot_id="Válassz egy botot a listából")
+    @app_commands.command(name="update", description="Update and restart a bot by ID.")
+    @app_commands.describe(bot_id="The ID of the bot to update")
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def update(self, interaction: discord.Interaction, bot_id: str):
@@ -66,8 +65,8 @@ class ManagementCog(commands.Cog):
         result = await self.bot.run_update(bot_id)
         await interaction.followup.send(result, ephemeral=True)
 
-    @app_commands.command(name="restart", description="Bot újraindítása frissítés nélkül.")
-    @app_commands.describe(bot_id="Válassz egy botot a listából")
+    @app_commands.command(name="restart", description="Restart a bot without update.")
+    @app_commands.describe(bot_id="The ID of the bot to restart")
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def restart(self, interaction: discord.Interaction, bot_id: str):
@@ -77,64 +76,56 @@ class ManagementCog(commands.Cog):
         result = await self.bot.run_restart(bot_id)
         await interaction.followup.send(result, ephemeral=True)
 
-    @app_commands.command(name="rollback", description="Visszaállítja a botot az előző Git állapotra (HEAD@{1}).")
-    @app_commands.describe(bot_id="Válassz egy botot a listából")
+    @app_commands.command(name="rollback", description="Rollback bot to previous Git state (HEAD@{1}).")
+    @app_commands.describe(bot_id="The ID of the bot to rollback")
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def rollback(self, interaction: discord.Interaction, bot_id: str):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /rollback for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         
-        config = self.bot.load_config()
-        if bot_id not in config:
-            await interaction.followup.send("❌ Ismeretlen Bot ID.", ephemeral=True)
+        if bot_id not in self.bot.bots:
+            await interaction.followup.send(str(self.bot.i18n.get("error_unknown_bot", "Unknown Bot ID.")), ephemeral=True)
             return
             
-        info = config[bot_id]
-        path = info["path"]
+        bot = self.bot.bots[bot_id]
         
         try:
-            reset_result = subprocess.check_output(
-                ["git", "reset", "--hard", "HEAD@{1}"], 
-                cwd=path, 
-                stderr=subprocess.STDOUT
-            ).decode('utf-8')
+            # 1. Rollback via GitService (Run in thread to avoid blocking)
+            success, result_msg = await asyncio.to_thread(self.bot.git_service.rollback_repo, bot.path)
             
-            existing_proc = self.bot.managed_processes.get(bot_id)
-            if existing_proc and existing_proc.is_running():
-                self.bot.manual_stop.add(bot_id)
-                existing_proc.terminate()
-                
-            new_proc = subprocess.Popen(
-                info["cmd"].split(), 
-                cwd=path, 
-                creationflags=0x08000000 if os.name == 'nt' else 0
-            )
-            self.bot.managed_processes[bot_id] = psutil.Process(new_proc.pid)
-            
-            await interaction.followup.send(
-                f"✅ **Visszaállítás sikeres!**\n\n**Git kimenet:**\n```\n{reset_result}\n```\nBot újraindítva a régi verzióval (PID: {new_proc.pid}).",
-                ephemeral=True
-            )
-        except Exception as e:
-            await interaction.followup.send(f"❌ Hiba a visszaállítás során: {str(e)}", ephemeral=True)
+            if not success:
+                await interaction.followup.send(f"Error: {result_msg}", ephemeral=True)
+                return
 
-    @app_commands.command(name="logs", description="Lekéri egy bot log fájljának utolsó N sorát.")
-    @app_commands.describe(bot_id="Válassz egy botot a listából", lines="Lekérendő sorok száma (alapértelmezett: 50, összes: 0)")
+            # 2. Restart via ProcessManager
+            await self.bot.process_manager.stop_process(bot_id)
+            new_pid = self.bot.process_manager.start_process(bot_id, bot, {}) # Pass empty env or handle in manager
+            
+            success_msg = self.bot.i18n.get("rollback_success", "",
+                output=result_msg,
+                pid=new_pid
+            )
+            await interaction.followup.send(success_msg, ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(self.bot.i18n.get("error_rollback", "Error during rollback: {error}", error=str(e)), ephemeral=True)
+
+    @app_commands.command(name="logs", description="Get last N lines of a bot log file.")
+    @app_commands.describe(bot_id="The ID of the bot", lines="Number of lines (default: 50, all: 0)")
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def logs(self, interaction: discord.Interaction, bot_id: str, lines: int = 50):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /logs ({lines} lines) for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         
-        config = self.bot.load_config()
-        if bot_id not in config:
-            await interaction.followup.send("❌ Ismeretlen Bot ID.", ephemeral=True)
+        if bot_id not in self.bot.bots:
+            await interaction.followup.send(str(self.bot.i18n.get("error_unknown_bot", "Unknown Bot ID.")), ephemeral=True)
             return
             
-        info = config[bot_id]
-        log_name = info.get("log", "bot.log")
-        log_path = os.path.join(info["path"], log_name)
+        bot = self.bot.bots[bot_id]
+        default_log_name = self.bot.config.get("bot_settings", {}).get("bot_log_default", "bot.log")
+        log_name = bot.log if bot.log else default_log_name
+        log_path = os.path.join(bot.path, log_name)
         
         if os.path.exists(log_path):
             try:
@@ -144,32 +135,34 @@ class ManagementCog(commands.Cog):
                     
                     content = "".join(last_lines)
                     if not content:
-                        await interaction.followup.send("ℹ️ A log fájl üres.", ephemeral=True)
+                        await interaction.followup.send(self.bot.i18n.get("error_log_empty", "Log file is empty."), ephemeral=True)
                         return
 
                     temp_file = "temp_logs.txt"
                     with open(temp_file, "w", encoding="utf-8") as f:
                         f.write(content)
                     
-                    file = discord.File(temp_file, filename=f"{info['name']}_last_{lines}_lines.txt")
-                    await interaction.followup.send(f"📄 **{info['name']}** utolsó {lines} sora:", file=file, ephemeral=True)
+                    file = discord.File(temp_file, filename=f"{bot.name}_last_{lines}_lines.txt")
+                    header = self.bot.i18n.get("logs_header", "Last {lines} lines of {name}:", name=bot.name, lines=lines)
+                    await interaction.followup.send(header, file=file, ephemeral=True)
                     os.remove(temp_file)
                 else:
-                    file = discord.File(log_path, filename=f"{info['name']}_full_logs.txt")
-                    await interaction.followup.send(f"📄 **{info['name']}** teljes logja:", file=file, ephemeral=True)
+                    file = discord.File(log_path, filename=f"{bot.name}_full_logs.txt")
+                    header = self.bot.i18n.get("logs_full_header", "Full log of {name}:", name=bot.name)
+                    await interaction.followup.send(header, file=file, ephemeral=True)
             except Exception as e:
-                await interaction.followup.send(f"❌ Hiba a logok lekérésekor: {str(e)}", ephemeral=True)
+                await interaction.followup.send(self.bot.i18n.get("error_log_fetch", "Error fetching logs: {error}", error=str(e)), ephemeral=True)
         else:
-            await interaction.followup.send(f"❌ Nem található log fájl itt: `{log_path}`", ephemeral=True)
+            await interaction.followup.send(self.bot.i18n.get("error_log_not_found", "Log file not found at: `{path}`", path=log_path), ephemeral=True)
 
-    @app_commands.command(name="manager-logs", description="Lekéri a Bot Manager saját log fájljának utolsó N sorát.")
-    @app_commands.describe(lines="Lekérendő sorok száma (alapértelmezett: 50, összes: 0)")
+    @app_commands.command(name="manager-logs", description="Get last N lines of the Bot Manager log.")
+    @app_commands.describe(lines="Number of lines (default: 50, all: 0)")
     @is_admin_context()
     async def manager_logs(self, interaction: discord.Interaction, lines: int = 50):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /manager-logs ({lines} lines)")
         await interaction.response.defer(ephemeral=True)
         
-        log_path = "manager.log"
+        log_path = self.bot.config.get("bot_settings", {}).get("manager_log_file", "manager.log")
         
         if os.path.exists(log_path):
             try:
@@ -179,7 +172,7 @@ class ManagementCog(commands.Cog):
                     
                     content = "".join(last_lines)
                     if not content:
-                        await interaction.followup.send("ℹ️ A Manager log fájl üres.", ephemeral=True)
+                        await interaction.followup.send(self.bot.i18n.get("error_manager_log_empty", "Manager log is empty."), ephemeral=True)
                         return
 
                     temp_file = "temp_manager_logs.txt"
@@ -187,58 +180,71 @@ class ManagementCog(commands.Cog):
                         f.write(content)
                     
                     file = discord.File(temp_file, filename=f"manager_last_{lines}_lines.txt")
-                    await interaction.followup.send(f"📄 **Bot Manager** utolsó {lines} sora:", file=file, ephemeral=True)
+                    header = self.bot.i18n.get("manager_logs_header", "Last {lines} lines of Bot Manager:", lines=lines)
+                    await interaction.followup.send(header, file=file, ephemeral=True)
                     os.remove(temp_file)
                 else:
                     file = discord.File(log_path, filename="manager_full_logs.txt")
-                    await interaction.followup.send(f"📄 **Bot Manager** teljes logja:", file=file, ephemeral=True)
+                    header = self.bot.i18n.get("manager_logs_full_header", "Full log of Bot Manager:")
+                    await interaction.followup.send(header, file=file, ephemeral=True)
             except Exception as e:
-                await interaction.followup.send(f"❌ Hiba a Manager logok lekérésekor: {str(e)}", ephemeral=True)
+                await interaction.followup.send(self.bot.i18n.get("error_log_fetch", "Error fetching logs: {error}", error=str(e)), ephemeral=True)
         else:
-            await interaction.followup.send("❌ Nem található a `manager.log` fájl.", ephemeral=True)
+            await interaction.followup.send(self.bot.i18n.get("error_manager_log_not_found", "Manager log file not found."), ephemeral=True)
 
-    @app_commands.command(name="manager-restart", description="[Admin] A Bot Manager (FixItFixa) azonnali újraindítása.")
+    @app_commands.command(name="manager-restart", description="[Admin] Immediate restart of Bot Manager.")
     @is_admin_context()
     async def manager_restart(self, interaction: discord.Interaction):
-        log.info(f"User {interaction.user} requested /manager-restart. Restarting FixItFixa...")
-        await interaction.response.send_message("🔄 **FixItFixa** újraindítása...", ephemeral=True)
+        log.info(f"User {interaction.user} requested /manager-restart. Restarting {self.bot.manager_name}...")
+        msg = self.bot.i18n.get("manager_restart_msg", "Restarting {name}... ", name=self.bot.manager_name)
+        await interaction.response.send_message(msg, ephemeral=True)
+        
+        # Save restart flag
+        os.makedirs("tmp", exist_ok=True)
+        with open(os.path.join("tmp", "manager_restart.json"), "w") as f:
+            json.dump({"restart": True}, f)
+            
         os.execv(sys.executable, ['python'] + sys.argv)
 
-    @app_commands.command(name="manager-update", description="[Admin] Git pull, pip install és újraindítás a Bot Managerhez.")
+    @app_commands.command(name="manager-update", description="[Admin] Git pull, pip install and restart Bot Manager.")
     @is_admin_context()
     async def manager_update(self, interaction: discord.Interaction):
-        log.info(f"User {interaction.user} requested /manager-update for FixItFixa.")
+        log.info(f"User {interaction.user} requested /manager-update for {self.bot.manager_name}.")
         await interaction.response.defer(ephemeral=True)
         
+        manager_path = os.getcwd() # Manager works from its own CWD
+        results = []
+        
         try:
-            # 1. Git Update (Robust method)
-            subprocess.run(["git", "fetch", "--all"], check=True)
-            pull_result = subprocess.check_output(["git", "reset", "--hard", "FETCH_HEAD"], stderr=subprocess.STDOUT).decode('utf-8')
+            # 1. Update code via GitService (Run in thread)
+            up_success, up_msg = await asyncio.to_thread(self.bot.git_service.update_repo, manager_path, self.bot.git_branch)
+            results.append(up_msg)
             
-            # 2. Pip Install
-            pip_msg = ""
-            if os.path.exists("requirements.txt"):
-                try:
-                    subprocess.check_output(
-                        [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], 
-                        stderr=subprocess.STDOUT
-                    ).decode('utf-8')
-                    pip_msg = "\n📦 **Pip frissítve.**"
-                except Exception as pip_err:
-                    pip_msg = f"\n⚠️ **Pip hiba:** `{str(pip_err)}`"
+            if not up_success:
+                error_msg = str(self.bot.messages.get("error_git_update_failed", "Git update failed."))
+                await interaction.followup.send(f"{error_msg}\n{up_msg}", ephemeral=True)
+                return
 
-            await interaction.followup.send(
-                f"✅ **FixItFixa frissítve!**\n```\n{pull_result}\n```" + pip_msg + "\n🚀 Újraindítás...", 
-                ephemeral=True
-            )
+            # 2. Install dependencies (Run in thread)
+            pip_success, pip_msg = await asyncio.to_thread(self.bot.git_service.install_dependencies, manager_path)
+            results.append(pip_msg)
+
+            # 3. Final response and restart
+            results.append(self.bot.i18n.get("manager_update_success", "Manager updated. Restarting..."))
+            await interaction.followup.send("\n".join(results), ephemeral=True)
             
-            log.info("Self-update successful. Restarting...")
-            # Give Discord a moment to send the message before we kill the process
-            await asyncio.sleep(1)
+            log.info("Manager updated, restarting process...")
+            
+            # Save restart flag for on_ready notification
+            os.makedirs("tmp", exist_ok=True)
+            with open(os.path.join("tmp", "manager_restart.json"), "w") as f:
+                json.dump({"restart": True}, f)
+                
+            await asyncio.sleep(1) # Wait for message to send
             os.execv(sys.executable, ['python'] + sys.argv)
         except Exception as e:
-            log.error(f"Manager self-update failed: {e}")
-            await interaction.followup.send(f"❌ Hiba a frissítés során: {str(e)}", ephemeral=True)
+            log.error(f"Manager update failed: {e}")
+            await interaction.followup.send(self.bot.i18n.get("error_update_general", "Error during update: {error}", error=str(e)), ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(ManagementCog(bot))

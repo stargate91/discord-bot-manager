@@ -1,38 +1,82 @@
 import os
 import sys
-import subprocess
 import json
 import asyncio
 import discord
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-import psutil
 from core.logger import log
+from core.process_manager import ProcessManager
+from core.git_service import GitService
+from core.models import BotConfig
+from core.i18n import LocalizationService
 
 # Load environment variables
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-GUILD_ID = os.getenv("GUILD_ID")
-ADMIN_CHANNEL_ID = os.getenv("ADMIN_CHANNEL_ID")
 
-# Configuration file path
+# Configuration file paths
 CONFIG_FILE = "config.json"
 
 class BotManager(commands.Bot):
     def __init__(self):
+        # Load initial configuration
+        self.config = self.load_json(CONFIG_FILE)
+        
+        settings = self.config.get("settings", {})
+        bot_settings = self.config.get("bot_settings", {})
+        
+        # Initialize Localization Service
+        self.language = bot_settings.get("language", "hu")
+        self.i18n = LocalizationService(self.language)
+        
+        prefix = bot_settings.get("command_prefix", "!")
         intents = discord.Intents.default()
         intents.members = True
         intents.message_content = True
-        super().__init__(command_prefix="!", intents=intents)
-        self.managed_processes = {} # {bot_id: psutil.Process}
-        self.manual_stop = set() # {bot_id} to ignore alerts when intentional
+        
+        super().__init__(command_prefix=prefix, intents=intents)
+        
+        # Services
+        self.process_manager = ProcessManager(self.config, self.i18n.translations)
+        self.git_service = GitService(self.config, self.i18n.translations)
+        
+        self.guild_id = settings.get("guild_id")
+        self.admin_channel_id = settings.get("admin_channel_id")
+        
+        self.check_interval = bot_settings.get("check_interval_seconds", 60)
+        self.git_branch = bot_settings.get("git_branch", "origin/main")
+        
+        # Parse bots into a dictionary of BotConfig objects
+        default_log = bot_settings.get("bot_log_default", "bot.log")
+        raw_bots = self.config.get("bots", {})
+        self.bots = {bid: BotConfig.from_dict(bid, bdata, default_log) for bid, bdata in raw_bots.items()}
+
+    @property
+    def manager_name(self):
+        """Returns the bot's name on the current server if available, else its username."""
+        if self.guild_id and self.guilds:
+            guild = self.get_guild(int(self.guild_id))
+            if guild and guild.me:
+                return guild.me.display_name
+        return self.user.name if self.user else self.i18n.get("default_manager_name", "Bot Manager")
+
+    def load_json(self, file_path):
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
+
+    def save_config(self, config):
+        self.config = config # Update in-memory copy too
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=4)
 
     async def setup_hook(self):
         # Clear global commands from this bot identity to prevent crossover
-        # DO THIS FIRST before loading extensions/cogs
         self.tree.clear_commands(guild=None)
 
-        # Load extensions from cogs directory (relative to script location)
+        # Load extensions from cogs directory
         base_dir = os.path.dirname(os.path.abspath(__file__))
         cogs_dir = os.path.join(base_dir, "cogs")
         
@@ -44,265 +88,152 @@ class BotManager(commands.Bot):
                         log.info(f"Loaded extension: {filename}")
                     except Exception as e:
                         log.error(f"Failed to load extension {filename}: {e}")
-        else:
-            log.error(f"Cogs directory NOT FOUND at {cogs_dir}")
-
+        
         # Sync Slash Commands
-        if GUILD_ID:
-            guild = discord.Object(id=int(GUILD_ID))
+        if self.guild_id:
+            guild = discord.Object(id=int(self.guild_id))
             self.tree.copy_global_to(guild=guild)
+            self.i18n.localize_commands(self.tree, guild)
             await self.tree.sync(guild=guild)
-            log.info(f"Bot Manager: Slash commands synced to guild {GUILD_ID}.")
+            log.info(f"Bot Manager: Slash commands synced to guild {self.guild_id}.")
         else:
+            self.i18n.localize_commands(self.tree)
             await self.tree.sync()
             log.info("Bot Manager: Slash commands synced globally.")
         
         # Discover already running bots
-        self.discover_existing_processes()
+        self.process_manager.discover_processes()
+        self.check_processes.change_interval(seconds=self.check_interval)
         self.check_processes.start()
-
-    def load_config(self):
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        return {}
-
-    def discover_existing_processes(self):
-        """Scans running processes to find bots defined in config."""
-        config = self.load_config()
-        if not config:
-            return
-
-        log.info("Scanning for existing bot processes...")
-        found_count = 0
-        
-        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'cwd']):
-            try:
-                cmdline = proc.info['cmdline']
-                if not cmdline or len(cmdline) < 2:
-                    continue
-                
-                # Check if it's a python process
-                if 'python' not in cmdline[0].lower():
-                    continue
-                
-                # Full command line as a string for easier matching
-                cmd_str = " ".join(cmdline).lower()
-                cwd = proc.info['cwd']
-                if not cwd:
-                    continue
-                
-                # Normalize CWD for comparison
-                norm_cwd = os.path.normpath(cwd).lower()
-
-                for bot_id, info in config.items():
-                    if bot_id in self.managed_processes:
-                        continue # Already tracking
-                    
-                    # Instead of matching the entire command (which includes 'python'), 
-                    # we match everything EXCEPT the first part (the executable)
-                    target_parts = info['cmd'].lower().split()
-                    target_args = " ".join(target_parts[1:]) if len(target_parts) > 1 else target_parts[0]
-                    target_path = os.path.normpath(info['path']).lower()
-                    
-                    # Match if the target args are in the cmdline AND (path is exact OR ends with the bot path)
-                    path_match = (target_path == norm_cwd) or (norm_cwd.endswith(target_path.split(":")[-1].replace("\\", "/").strip("/").lower()))
-                    cmd_match = target_args in cmd_str
-                    
-                    if cmd_match and path_match:
-                        self.managed_processes[bot_id] = psutil.Process(proc.info['pid'])
-                        log.info(f"Connected to existing bot: {info['name']} (PID: {proc.info['pid']})")
-                        found_count += 1
-                        break
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
-                # log.info(f"DEBUG: Process error for PID {proc.info.get('pid')}: {e}")
-                continue
-        
-        if found_count > 0:
-            log.info(f"Discovery complete. Found {found_count} running bots.")
-        else:
-            log.info("No matching bot processes found.")
-
-    def save_config(self, config):
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-            json.dump(config, f, indent=4)
 
     async def on_ready(self):
         # Set Presence
-        count = len(self.load_config())
+        count = len(self.bots)
+        activity_msg = self.i18n.get("activity_text", "Watching {count} bots...", count=count)
+        
         activity = discord.Activity(
             type=discord.ActivityType.watching, 
-            name=f"Pórázon tartok {count} botot... ⛓️"
+            name=activity_msg
         )
         await self.change_presence(activity=activity)
-        log.info(f"Bot Manager online. Neural-link active. {self.user}")
+        log.info(f"Bot Manager online. Neural-link active. {self.user} ({self.manager_name})")
+
+        # Check for pending restart notification
+        restart_info_path = os.path.join("tmp", "manager_restart.json")
+        if os.path.exists(restart_info_path):
+            try:
+                if self.admin_channel_id:
+                    channel = self.get_channel(int(self.admin_channel_id))
+                    if channel:
+                        msg = self.i18n.get("manager_online_log", "Manager {name} is back online.", name=self.manager_name)
+                        await channel.send(msg)
+                os.remove(restart_info_path)
+            except Exception as e:
+                log.error(f"Failed to send restart notification: {e}")
+
+    async def notify_admin(self, msg):
+        """Helper to send a message to the admin channel."""
+        if self.admin_channel_id:
+            channel = self.get_channel(int(self.admin_channel_id))
+            if channel:
+                await channel.send(msg)
 
     @tasks.loop(seconds=60)
     async def check_processes(self):
-        config = self.load_config()
-        for bot_id, info in config.items():
-            process = self.managed_processes.get(bot_id)
-            if process:
-                if not process.is_running():
-                    if bot_id not in self.manual_stop:
-                        log.warning(f"ALERTI: Bot {info['name']} ({bot_id}) stopped unexpectedly.")
-                        if ADMIN_CHANNEL_ID:
-                            channel = self.get_channel(int(ADMIN_CHANNEL_ID))
-                            if channel:
-                                await channel.send(
-                                    f"🚨 **ALERTI:** A(z) **{info['name']}** ({bot_id}) hirtelen leállt!\n"
-                                    f"Szeretnéd, hogy újraindítsam? Használd a `/restart bot_id:{bot_id}` parancsot."
-                                )
-                    self.managed_processes.pop(bot_id, None)
+        stopped_bots = self.process_manager.fetch_unexpected_stops()
+        for bot_id, _ in stopped_bots:
+            bot = self.bots.get(bot_id)
+            if not bot: continue
             
-            if bot_id in self.manual_stop:
-                if not process or not process.is_running():
-                    self.manual_stop.remove(bot_id)
+            log.warning(f"ALERT: Bot {bot.name} ({bot_id}) stopped unexpectedly.")
+            if self.admin_channel_id:
+                channel = self.get_channel(int(self.admin_channel_id))
+                if channel:
+                    alert_msg = self.i18n.get("bot_stopped_alert", "", name=bot.name, id=bot_id)
+                    await channel.send(alert_msg)
 
     async def run_restart(self, bot_id):
         """Restarts a bot, or a group of bots if they share the same path."""
-        config = self.load_config()
-        if bot_id not in config:
-            return "❌ A megadott Bot ID nem szerepel a konfigurációban."
+        if bot_id not in self.bots:
+            return self.i18n.get("error_id_not_found", "Bot ID not found in config.")
 
-        target_path = config[bot_id]["path"]
-        related_bots = [bid for bid, info in config.items() if info["path"] == target_path]
+        bot = self.bots[bot_id]
+        related_bots = [b for b in self.bots.values() if b.path == bot.path]
         
         results = []
-        for bid in related_bots:
-            info = config[bid]
+        for b in related_bots:
             try:
                 # 1. Stop
-                existing_proc = self.managed_processes.get(bid)
-                if existing_proc and existing_proc.is_running():
-                    self.manual_stop.add(bid)
-                    existing_proc.terminate()
-                    try:
-                        existing_proc.wait(timeout=5)
-                    except psutil.TimeoutExpired:
-                        existing_proc.kill()
-                    await asyncio.sleep(0.5)
+                await self.process_manager.stop_process(b.id)
 
                 # 2. Restart (Clean Env)
                 bot_env = os.environ.copy()
                 for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
                     bot_env.pop(key, None)
                 
-                # Signal the bot to skip its own FileHandler
                 bot_env["MANAGED_LOGGING"] = "1"
-                bot_env["INSTANCE_NAME"] = info["cmd"].split()[-1] # Ensure INSTANCE_NAME is set for logger
+                bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
 
-                # Redirect output to the log file defined in config
-                log_file_path = os.path.join(info["path"], info.get("log", "bot.log"))
-                os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+                # Start process via service
+                new_pid = self.process_manager.start_process(b.id, b, bot_env)
                 
-                log_file = open(log_file_path, "a", encoding="utf-8")
-
-                new_proc = subprocess.Popen(
-                    info["cmd"].split(), 
-                    cwd=info["path"], 
-                    env=bot_env,
-                    stdout=log_file,
-                    stderr=subprocess.STDOUT,
-                    creationflags=0x08000000 if os.name == 'nt' else 0
-                )
-                self.managed_processes[bid] = psutil.Process(new_proc.pid)
-                results.append(f"✅ **{info['name']}** újraindítva (PID: {new_proc.pid})")
+                success_msg = self.i18n.get("bot_restarted_simple", "", name=b.name, pid=new_pid)
+                results.append(success_msg)
+                await self.notify_admin(self.i18n.get("bot_restarted_log", "Bot {name} ({id}) restarted.", name=b.name, id=b.id))
             except Exception as e:
-                results.append(f"❌ **{info['name']}** hiba: {str(e)}")
+                error_msg = self.i18n.get("restart_error", "", name=b.name, error=str(e))
+                results.append(error_msg)
 
         return "\n".join(results)
 
     async def run_update(self, bot_id):
         """Updates and restarts all bots sharing the same path."""
-        config = self.load_config()
-        if bot_id not in config:
-            return "❌ A megadott Bot ID nem szerepel a konfigurációban."
+        if bot_id not in self.bots:
+            return self.i18n.get("error_id_not_found", "Bot ID not found in config.")
 
-        target_path = config[bot_id]["path"]
-        related_bots = [bid for bid, info in config.items() if info["path"] == target_path]
+        bot = self.bots[bot_id]
+        related_bots = [b for b in self.bots.values() if b.path == bot.path]
         
-        # 1. Stop all related bots first
-        for bid in related_bots:
-            existing_proc = self.managed_processes.get(bid)
-            if existing_proc and existing_proc.is_running():
-                self.manual_stop.add(bid)
-                existing_proc.terminate()
-                try:
-                    existing_proc.wait(timeout=5)
-                except psutil.TimeoutExpired:
-                    existing_proc.kill()
+        # 1. Stop all related bots
+        for b in related_bots:
+            await self.process_manager.stop_process(b.id)
         
-        await asyncio.sleep(1) # Wait for file handles to release
-
+        results = []
         try:
-            # 2. Update code (once per path)
-            log.info(f"Updating shared path {target_path} via fetch + reset...")
-            norm_path = os.path.normpath(os.path.abspath(target_path))
+            # 2. Update code via GitService (Run in thread)
+            log.info(f"Updating code at: {bot.path}")
+            up_success, up_msg = await asyncio.to_thread(self.git_service.update_repo, bot.path, self.git_branch)
+            results.append(up_msg)
             
-            # Clean up any stale git locks first to avoid 128/1 errors on Windows
-            lock_path = os.path.join(norm_path, ".git", "index.lock")
-            if os.path.exists(lock_path):
-                try:
-                    os.remove(lock_path)
-                    log.info(f"Removed stale git lock: {lock_path}")
-                except:
-                    pass
+            if not up_success:
+                results.append(self.i18n.get("error_git_update_failed", "Git update failed."))
+            else:
+                # 3. Install requirements (Run in thread)
+                pip_success, pip_msg = await asyncio.to_thread(self.git_service.install_dependencies, bot.path)
+                results.append(pip_msg)
 
-            # Fetch origin explicitly
-            subprocess.run(["git", "fetch", "origin"], cwd=norm_path, check=True)
-            # Reset to origin/main (verified to exist for the radio bot)
-            subprocess.run(["git", "reset", "--hard", "origin/main"], cwd=norm_path, check=True)
-            
-            # 2b. Auto-pip
-            pip_msg = ""
-            req_path = os.path.join(target_path, "requirements.txt")
-            if os.path.exists(req_path):
-                try:
-                    pip_result = subprocess.check_output(
-                        [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], 
-                        cwd=target_path, 
-                        stderr=subprocess.STDOUT
-                    ).decode('utf-8')
-                    pip_msg = "\n\n**📦 Pip Install:**\n```\n" + (pip_result[-300:] if len(pip_result) > 300 else pip_result) + "\n```"
-                except Exception as pip_err:
-                    pip_msg = f"\n\n**❌ Pip Install Hiba:** `{str(pip_err)}`"
+            # 4. Restart all related bots
+            for b in related_bots:
+                bot_env = os.environ.copy()
+                for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
+                    bot_env.pop(key, None)
 
-                # 3. Restart all related bots
-                results = [f"✅ **Frissítés sikeres a közös mappában!** (FETCH_HEAD)" + pip_msg]
-                for bid in related_bots:
-                    info = config[bid]
-                    bot_env = os.environ.copy()
-                    for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
-                        bot_env.pop(key, None)
+                bot_env["MANAGED_LOGGING"] = "1"
+                bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
 
-                    # Signal the bot to skip its own FileHandler
-                    bot_env["MANAGED_LOGGING"] = "1"
-                    bot_env["INSTANCE_NAME"] = info["cmd"].split()[-1]
-
-                    # Redirect output to the log file defined in config
-                    log_file_path = os.path.join(info["path"], info.get("log", "bot.log"))
-                    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-                    log_file = open(log_file_path, "a", encoding="utf-8")
-
-                    new_proc = subprocess.Popen(
-                        info["cmd"].split(), 
-                        cwd=info["path"], 
-                        env=bot_env,
-                        stdout=log_file,
-                        stderr=subprocess.STDOUT,
-                        creationflags=0x08000000 if os.name == 'nt' else 0
-                    )
-                    self.managed_processes[bid] = psutil.Process(new_proc.pid)
-                    results.append(f"🚀 **{info['name']}** újraindítva (PID: {new_proc.pid})")
+                new_pid = self.process_manager.start_process(b.id, b, bot_env)
+                restart_msg = self.i18n.get("bot_restarted_simple", "", name=b.name, pid=new_pid)
+                results.append(restart_msg)
+                await self.notify_admin(self.i18n.get("bot_restarted_log", "Bot {name} ({id}) restarted.", name=b.name, id=b.id))
             
             return "\n".join(results)
         except Exception as e:
-            return f"❌ Hiba történt a frissítés során: {str(e)}"
+            log.error(f"Update error: {e}")
+            return self.i18n.get("error_update_general", "Error during update: {error}", error=str(e))
 
 if __name__ == "__main__":
     bot = BotManager()
     if TOKEN:
         bot.run(TOKEN)
     else:
-        log.error("Hiba: Nincs DISCORD_TOKEN megadva az .env fájlban!")
+        log.error(bot.i18n.get("error_no_token", "Error: DISCORD_TOKEN not found in .env!"))
