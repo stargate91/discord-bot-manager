@@ -54,6 +54,10 @@ async def bot_id_autocomplete(
 class ManagementCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        # We apply the command suffix from config.json to our prefix commands
+        suffix = getattr(bot, 'command_suffix', '')
+        self.sync_prefix.name = f"sync{suffix}"
+        self.clear_commands_prefix.name = f"clear_commands{suffix}"
 
     @app_commands.command(name="update", description="Update and restart a bot by ID.")
     @app_commands.describe(bot_id="The ID of the bot to update")

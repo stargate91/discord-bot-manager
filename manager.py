@@ -38,13 +38,14 @@ class BotManager(commands.Bot):
         self.i18n = LocalizationService(self.language)
         
         # We set up the prefix (like '!') and the 'intents' (permissions)
-        prefix = bot_settings.get("command_prefix", "!")
+        self.command_prefix = bot_settings.get("command_prefix", "!")
+        self.command_suffix = bot_settings.get("command_suffix", "")
         intents = discord.Intents.default()
         intents.members = True
         intents.message_content = True
         
         # We call the 'super' init to finish setting up the Discord bot
-        super().__init__(command_prefix=prefix, intents=intents)
+        super().__init__(command_prefix=self.command_prefix, intents=intents)
         
         # We initialize our helper services (ProcessManager and GitService)
         self.process_manager = ProcessManager(self.config, self.i18n.translations)
