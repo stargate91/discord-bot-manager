@@ -31,7 +31,7 @@ class BotManager(commands.Bot):
         max_bytes = bot_settings.get("log_max_bytes", 5*1024*1024)
         backup_count = bot_settings.get("log_backup_count", 3)
         reconfigure_log(log_file, max_bytes, backup_count)
-        setup_discord_logging(log_file, max_bytes, backup_count)
+        # We no longer explicitly set discord logging to DEBUG to avoid interference and noise
         
         # First, we load the configuration from the config.json file
         log.info(f"Loading configuration from: {CONFIG_FILE}")
@@ -281,6 +281,14 @@ class BotManager(commands.Bot):
 
 # This is where the program starts!
 if __name__ == "__main__":
+    # Force SelectorEventLoop on Windows to fix Gateway handshake hangs with modern Python (3.12-3.14)
+    if os.name == 'nt':
+        import asyncio
+        import sys
+        # Note: In Python 3.14, ProactorEventLoop is the default and sometimes buggy with aiohttp/discord.py
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        log.info("[DEBUG] Event loop policy set to WindowsSelectorEventLoopPolicy.")
+
     # We create our Bot Manager object
     bot = BotManager()
     if TOKEN:
