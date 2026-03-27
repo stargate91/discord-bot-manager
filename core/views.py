@@ -11,22 +11,33 @@ class Icons:
     
     @classmethod
     def setup(cls, config):
-        emoji_cfg = config.get("bot_settings", {}).get("emojis", {})
+        bot_settings = config.get("bot_settings", {})
+        emoji_cfg = bot_settings.get("emojis", {})
         
         def get(name, default):
-            val = emoji_cfg.get(name, default)
+            val = emoji_cfg.get(name)
+            if not val:
+                log.debug(f"[Icons] Emoji '{name}' not found in config, using default: {default}")
+                return discord.PartialEmoji.from_str(default) if ":" in str(default) else discord.PartialEmoji(name=default)
+            
             try:
-                return discord.PartialEmoji.from_str(val)
-            except:
-                return discord.PartialEmoji(name=default) if ":" not in default else discord.PartialEmoji.from_str(default)
+                pe = discord.PartialEmoji.from_str(val)
+                log.debug(f"[Icons] Loaded emoji '{name}': {pe}")
+                return pe
+            except Exception as e:
+                log.error(f"[Icons] Failed to parse emoji '{name}' ({val}): {e}")
+                return discord.PartialEmoji(name=default) if ":" not in str(default) else discord.PartialEmoji.from_str(default)
 
         cls.RESTART = get("restart", "🔄")
         cls.UPDATE = get("update", "🆙")
         cls.STOP = get("stop", "⏹️")
+        log.info(f"UI Icons initialized. Restart: {cls.RESTART}, Update: {cls.UPDATE}, Stop: {cls.STOP}")
 
 class BotControlButton(discord.ui.Button):
     def __init__(self, style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):
-        super().__init__(style=style, emoji=emoji)
+        # Debug: using action name as label to ensure visibility
+        cid = f"status:{bot_id}:{action}"
+        super().__init__(style=style, label=action.capitalize(), emoji=emoji, custom_id=cid)
         self.bot_id = bot_id
         self.bot_name = bot_name
         self.action = action # 'restart', 'stop', 'update'
