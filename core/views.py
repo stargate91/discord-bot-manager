@@ -4,38 +4,13 @@ import sys
 import asyncio
 from core.logger import log
 
-class Icons:
-    RESTART: discord.PartialEmoji = None
-    UPDATE: discord.PartialEmoji = None
-    STOP: discord.PartialEmoji = None
-    
-    @classmethod
-    def setup(cls, config):
-        """Initializes all icons from config or defaults."""
-        # Exact logic from music bot, adapted for dict support if needed
-        if hasattr(config, "emojis"):
-            icons_data = config.emojis
-        elif isinstance(config, dict):
-            icons_data = config.get("emojis", {})
-        else:
-            icons_data = {}
-        
-        def get(name, default):
-            return discord.PartialEmoji.from_str(icons_data.get(name, default))
-
-        cls.RESTART = get("restart", "🔄")
-        cls.UPDATE = get("update", "🆙")
-        cls.STOP = get("stop", "⏹️")
-
-# Default initialization
-class DefaultConfig: emojis = {}
-Icons.setup({"emojis": {}})
+from core.icons import Icons
 
 class BotControlButton(discord.ui.Button):
     def __init__(self, style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):
         # Custom IDs for state persistence and clean emoji-only buttons
         cid = f"status:{bot_id}:{action}"
-        super().__init__(style=style, label=None, emoji=emoji, custom_id=cid)
+        super().__init__(style=style, label="", emoji=emoji, custom_id=cid)
         self.bot_id = bot_id
         self.bot_name = bot_name
         self.action = action # 'restart', 'stop', 'update'

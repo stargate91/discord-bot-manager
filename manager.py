@@ -28,7 +28,7 @@ class BotManager(commands.Bot):
         self.config = self.load_json(CONFIG_FILE)
         
         # Initialize UI Icons
-        from core.views import Icons
+        from core.icons import Icons
         Icons.setup(self.config.get("bot_settings", {}))
         
         if not self.config:
