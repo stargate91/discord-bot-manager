@@ -113,8 +113,7 @@ class BotManager(commands.Bot):
 
     async def setup_hook(self):
         """This runs once right after the bot connects to Discord."""
-        # We clear any old commands to make sure everything is fresh
-        self.tree.clear_commands(guild=None)
+        # (We no longer clear commands on every startup to prevent sync issues)
 
         # We look for all the files in the 'cogs' folder to load extra features
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -130,6 +129,11 @@ class BotManager(commands.Bot):
                         log.info(f"Loaded extension: {filename}")
                     except Exception as e:
                         log.error(f"Failed to load extension {filename}: {e}")
+        
+        # Log how many commands we have in the tree
+        log.info(f"Total commands in tree: {len(self.tree.get_commands())}")
+        for cmd in self.tree.get_commands():
+            log.info(f"  - /{cmd.name}")
         
         # Synchronizing slash commands can take a long time on startup.
         # Instead, we now use the manual '!sync' or '/sync' commands in the admin channel.
@@ -175,6 +179,14 @@ class BotManager(commands.Bot):
             channel = self.get_channel(int(self.admin_channel_id))
             if channel:
                 await channel.send(msg)
+
+    async def on_message(self, message):
+        """Log incoming messages to debug prefix commands."""
+        if message.author.bot:
+            return
+            
+        log.info(f"[Message] From {message.author} in #{message.channel}: {message.content}")
+        await self.process_commands(message)
 
     @tasks.loop(seconds=60)
     async def check_processes(self):

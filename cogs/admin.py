@@ -247,13 +247,12 @@ class ManagementCog(commands.Cog):
     @commands.guild_only()
     async def sync_prefix(self, ctx: commands.Context, spec: str | None = None):
         """[Admin] Sync slash commands manually (guild/global/copy)."""
-        # Safety check: only allow in admin channel if configured
-        admin_channel_id = getattr(self.bot, 'admin_channel_id', None)
-        if admin_channel_id and str(ctx.channel.id) != str(admin_channel_id):
-            return
-
-        # 1. Localize commands before syncing
-        self.bot.i18n.localize_commands(self.bot.tree, guild=ctx.guild if spec != "global" else None)
+        # 1. Always localize GLOBAL commands first (they are the source for copy_global_to)
+        self.bot.i18n.localize_commands(self.bot.tree, guild=None)
+        
+        # 2. Localize any guild-specific commands separately if they exist
+        if ctx.guild:
+            self.bot.i18n.localize_commands(self.bot.tree, guild=ctx.guild)
 
         if spec == "global":
             synced = await self.bot.tree.sync()
