@@ -9,6 +9,16 @@ class GitService:
         self.config = config
         self.messages = messages
 
+    def clean_locks(self, path):
+        """This helper removes stuck .git/index.lock files that prevent updates."""
+        lock_file = os.path.join(path, ".git", "index.lock")
+        if os.path.exists(lock_file):
+            try:
+                os.remove(lock_file)
+                log.info(f"Removed stuck Git lock file: {lock_file}")
+            except Exception as e:
+                log.error(f"Failed to remove Git lock file {lock_file}: {e}")
+
     def get_commit_details(self, path, rev="HEAD"):
         """Gets the hash, author, and subject of a specific revision."""
         try:
