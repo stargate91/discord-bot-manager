@@ -16,10 +16,10 @@ class Icons:
             
             # Map them by name if they are in our expected set
             for e in app_emojis:
-                if e.name in ["arrowclockwise", "rotatecw"]:
+                if e.name == "arrowclockwise":
                     cls.RESTART = e
                     log.info(f"[Icons]   Mapped {e.name} as RESTART icon (Full Emoji)")
-                elif e.name in ["arrowsclockwise", "refreshcw"]:
+                elif e.name == "arrowsclockwise":
                     cls.UPDATE = e
                     log.info(f"[Icons]   Mapped {e.name} as UPDATE icon (Full Emoji)")
                 elif e.name == "power":

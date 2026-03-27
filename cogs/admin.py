@@ -309,45 +309,5 @@ class ManagementCog(commands.Cog):
             msg = self.bot.i18n.get("sync_success_guild", "Synced {count} commands to guild.", count=len(synced))
             await interaction.followup.send(msg, ephemeral=True)
 
-    @app_commands.command(name="test-emojis", description="Debug: test if bot can see custom emojis.")
-    @is_admin_context()
-    async def test_emojis(self, interaction: discord.Interaction):
-        # We need a non-ephemeral response for reactions
-        await interaction.response.defer(ephemeral=False)
-        from core.icons import Icons
-        
-        # Fetch application emojis to check them too
-        try:
-            app_emojis = {e.id: e for e in (await self.bot.fetch_application_emojis())}
-        except:
-            app_emojis = {}
-        
-        msg = await interaction.followup.send("Testing emojis... (Reaction test starting)", ephemeral=False)
-        
-        results = []
-        for name, emoji_obj in [("Restart", Icons.RESTART), ("Update", Icons.UPDATE), ("Stop", Icons.STOP)]:
-            resolved = "N/A"
-            reaction_test = "N/A"
-            if emoji_obj and emoji_obj.id:
-                bot_emoji = self.bot.get_emoji(emoji_obj.id)
-                if bot_emoji:
-                    resolved = f"Found in Guild: {bot_emoji.name}"
-                elif emoji_obj.id in app_emojis:
-                    resolved = f"Found in App Emojis: {app_emojis[emoji_obj.id].name}"
-                else:
-                    resolved = "NOT FOUND in any cache"
-                
-                # Test reaction
-                try:
-                    await msg.add_reaction(emoji_obj)
-                    reaction_test = "✅ Reaction success"
-                except Exception as e:
-                    reaction_test = f"❌ Reaction failed: {e}"
-            
-            emoji_type = type(emoji_obj).__name__
-            results.append(f"• **{name}**: {emoji_obj} | {resolved} ({emoji_type}) | {reaction_test}")
-        
-        await msg.edit(content="\n".join(results))
-
 async def setup(bot):
     await bot.add_cog(ManagementCog(bot))
