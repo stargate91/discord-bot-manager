@@ -89,11 +89,11 @@ class MonitoringCog(commands.Cog):
             
             bots_stats[bot_id] = bot_entry
         
-        # 3. We send everything to the ModernStatusView
+        # 3. We send everything to the ModernStatusLayout
         try:
-            from core.views import ModernStatusView
-            view = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats)
-            await interaction.followup.send(embeds=view.embeds, view=view)
+            from core.views import ModernStatusLayout
+            layout = ModernStatusLayout(self.bot, self.bot.i18n, manager_stats, bots_stats)
+            await interaction.followup.send(view=layout)
         except Exception as e:
             log.error(f"Error in /status modern layout: {e}", exc_info=True)
             # Fallback to simple message if the modern layout fails

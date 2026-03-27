@@ -1,5 +1,6 @@
 import discord
-from discord.ui import View, Button
+from discord import ui
+from discord.ui import Button
 from core.logger import log
 
 class BotControlButton(discord.ui.Button):
@@ -49,124 +50,97 @@ class BotControlButton(discord.ui.Button):
         # We don't refresh the whole status message automatically here to avoid rate limits,
         # the user can click the Global Refresh button if they want.
 
-class ModernStatusView(View):
-    """A premium, modern status view for managed bots using standard discord.py components."""
+class ModernStatusLayout(ui.LayoutView):
+    """A premium, modern status view for managed bots using Components V2 layout."""
     def __init__(self, bot_manager, i18n, manager_stats, bots_stats):
-        super().__init__(timeout=300) # 5 minute timeout
+        super().__init__(timeout=300)
         self.bot_manager = bot_manager
         self.i18n = i18n
         self.manager_stats = manager_stats
         self.bots_stats = bots_stats
         
-        self.create_embeds()
-        self.create_buttons()
+        self.build_layout()
 
-    def create_embeds(self):
-        self.embeds = []
-        
-        # 1. Manager Embed
-        manager_embed = discord.Embed(
-            title=self.bot_manager.manager_name,
-            description=f"**{self.i18n.get('status_running', 'Running')}**",
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
+    def build_layout(self):
+        # 1. Manager Section
+        manager_text = (
+            f"## {self.bot_manager.manager_name}\n"
+            f"**{self.i18n.get('status_running', 'Running')}**\n"
+            f"> {self.i18n.get('uptime', 'Uptime')}: {self.manager_stats['uptime']}\n"
+            f"> {self.i18n.get('branch', 'Branch')}: `{self.manager_stats['branch']}`\n"
+            f"> {self.i18n.get('resources', 'Resources')}: CPU: `{self.manager_stats['cpu']}%` | RAM: `{int(self.manager_stats['ram'])} MB`"
         )
-        manager_embed.set_thumbnail(url=self.bot_manager.user.display_avatar.url)
-        manager_embed.add_field(name=self.i18n.get("uptime", "Uptime"), value=self.manager_stats["uptime"], inline=True)
-        manager_embed.add_field(name=self.i18n.get("branch", "Branch"), value=f"`{self.manager_stats['branch']}`", inline=True)
-        manager_embed.add_field(name=self.i18n.get("resources", "Resources"), value=f"CPU: `{self.manager_stats['cpu']}%` | RAM: `{int(self.manager_stats['ram'])} MB`", inline=False)
-        manager_embed.set_footer(text=self.i18n.get("manager_status_header", "Manager Status"))
+        self.add_item(ui.TextDisplay(manager_text))
         
-        self.embeds.append(manager_embed)
-        
-        # 2. Bots Embed
+        # Refresh row
+        refresh_row = ui.ActionRow()
+        refresh_btn = ui.Button(label=self.i18n.get("refresh", "Refresh"), style=discord.ButtonStyle.secondary, emoji="🔄")
+        async def refresh_callback(interaction: discord.Interaction):
+            cog = self.bot_manager.get_cog("MonitoringCog")
+            if cog:
+                await cog.status.callback(cog, interaction)
+        refresh_btn.callback = refresh_callback
+        refresh_row.add_item(refresh_btn)
+        self.add_item(refresh_row)
+
+        self.add_item(ui.Separator(visible=True, spacing=discord.enums.SeparatorSpacing.large))
+
+        # 2. Managed Bots Sections
         if self.bots_stats:
-            bots_embed = discord.Embed(
-                title=self.i18n.get('bots_status_header', '### Managed Bots'),
-                color=discord.Color.dark_grey()
-            )
+            self.add_item(ui.TextDisplay(f"### {self.i18n.get('bots_status_header', 'Managed Bots')}"))
             
             for b_id, b_info in self.bots_stats.items():
                 b_name = b_info["name"]
-                b_status = b_info["status"]
                 
                 if b_info["is_running"]:
                     status_emoji = "🟢"
                     details = f"CPU: `{b_info['cpu']}%` | RAM: `{int(b_info['ram'])} MB` | Up: {b_info['uptime']}"
                 else:
                     status_emoji = "🔴"
-                    details = f"*{b_status}*"
+                    details = f"*{b_info['status']}*"
                 
-                field_name = f"{status_emoji} {b_name} ({b_id})"
-                field_value = f"{details}\n`{self.i18n.get('path', 'Path')}: {b_info['path']}`"
-                bots_embed.add_field(name=field_name, value=field_value, inline=False)
-            
-            self.embeds.append(bots_embed)
-        else:
-            no_bots_embed = discord.Embed(description=f"*{self.i18n.get('error_no_bots_configured', 'No bots configured.')}*", color=discord.Color.red())
-            self.embeds.append(no_bots_embed)
-
-    def create_buttons(self):
-        # Global Refresh Button
-        refresh_btn = Button(label=self.i18n.get("refresh", "Refresh"), style=discord.ButtonStyle.secondary, emoji="🔄", row=0)
-        async def refresh_callback(interaction: discord.Interaction):
-            # We just trigger the status command again
-            cog = self.bot_manager.get_cog("MonitoringCog")
-            if cog:
-                # We need to hack a bit because it's an app command
-                await cog.status.callback(cog, interaction)
-        refresh_btn.callback = refresh_callback
-        self.add_item(refresh_btn)
-
-        # Bot Specific Buttons (up to 4 more rows)
-        if self.bots_stats:
-            row = 1
-            for b_id, b_info in self.bots_stats.items():
-                if row > 4: break # Discord limit
+                bot_text = f"**{status_emoji} {b_name}** ({b_id})\n{details}\n`{self.i18n.get('path', 'Path')}: {b_info['path']}`"
+                
+                # Use TextDisplay instead of Section because Section requires an accessory
+                self.add_item(ui.TextDisplay(bot_text))
+                
+                # Buttons Row for this bot
+                bot_row = ui.ActionRow()
                 
                 # Restart Button
-                self.add_item(BotControlButton(
-                    label=f"{self.i18n.get('btn_restart', 'Rest')} {b_info['name']}", 
-                    style=discord.ButtonStyle.primary, 
+                bot_row.add_item(BotControlButton(
+                    label=f"{self.i18n.get('btn_restart', 'Rest')} {b_name}", 
+                    style=discord.ButtonStyle.secondary, 
                     bot_id=b_id, 
-                    bot_name=b_info['name'],
+                    bot_name=b_name,
                     action="restart", 
                     view=self
                 ))
                 
                 # Update Button
-                self.add_item(BotControlButton(
-                    label=f"{self.i18n.get('btn_update', 'Upd')} {b_info['name']}", 
-                    style=discord.ButtonStyle.success, 
+                bot_row.add_item(BotControlButton(
+                    label=f"{self.i18n.get('btn_update', 'Upd')} {b_name}", 
+                    style=discord.ButtonStyle.secondary, 
                     bot_id=b_id, 
-                    bot_name=b_info['name'],
+                    bot_name=b_name,
                     action="update", 
                     view=self
                 ))
 
                 # Stop Button
-                self.add_item(BotControlButton(
-                    label=f"{self.i18n.get('btn_stop', 'Stop')} {b_info['name']}", 
-                    style=discord.ButtonStyle.danger, 
+                bot_row.add_item(BotControlButton(
+                    label=f"{self.i18n.get('btn_stop', 'Stop')} {b_name}", 
+                    style=discord.ButtonStyle.secondary, 
                     bot_id=b_id, 
-                    bot_name=b_info['name'],
+                    bot_name=b_name,
                     action="stop", 
                     view=self
                 ))
                 
-                # Manual Row increment is not needed if we just add items, 
-                # but we want each bot on its own row if possible.
-                # Actually, 3 buttons per bot * 3 bots = 9 buttons.
-                # Row 0: Refresh (1)
-                # Row 1: Bot 1 (3)
-                # Row 2: Bot 2 (3)
-                # Row 3: Bot 3 (3)
-                # Total Row 3. Perfect.
-                
-                # Set row for the last 3 added items
-                for item in self.children[-3:]:
-                    item.row = row
-                row += 1
+                self.add_item(bot_row)
+                self.add_item(ui.Separator())
+        else:
+            self.add_item(ui.TextDisplay(f"*{self.i18n.get('error_no_bots_configured', 'No bots configured.')}*"))
 
 class UpdateResultEmbed(discord.Embed):
     """A premium, modern embed for displaying update results."""
