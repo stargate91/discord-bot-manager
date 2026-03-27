@@ -31,19 +31,19 @@ class BotManager(commands.Bot):
         from core.icons import Icons
         Icons.setup(self.config.get("bot_settings", {}))
         
-        # Apply log configuration from config.json
-        from core.logger import reconfigure_log
-        log_file = bot_settings.get("manager_log_file", "manager.log")
-        max_bytes = bot_settings.get("log_max_bytes", 5*1024*1024)
-        backup_count = bot_settings.get("log_backup_count", 3)
-        reconfigure_log(log_file, max_bytes, backup_count)
-        
         if not self.config:
             log.error(f"CRITICAL: Configuration file not found or empty at {CONFIG_FILE}")
         
         # We separate the settings into smaller groups for easier access
         settings = self.config.get("settings", {})
         bot_settings = self.config.get("bot_settings", {})
+        
+        # Apply log configuration from config.json
+        from core.logger import reconfigure_log
+        log_file = bot_settings.get("manager_log_file", "manager.log")
+        max_bytes = bot_settings.get("log_max_bytes", 5*1024*1024)
+        backup_count = bot_settings.get("log_backup_count", 3)
+        reconfigure_log(log_file, max_bytes, backup_count)
         
         # We start the 'Localization Service' so the bot can speak different languages
         self.language = bot_settings.get("language", "hu")
