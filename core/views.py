@@ -12,7 +12,7 @@ class BotControlButton(discord.ui.Button):
         log.info(f"[UI] Creating button for {bot_id}:{action} with emoji: {emoji} (Type: {type(emoji)})")
         # Custom IDs for state persistence and clean emoji-only buttons
         cid = f"status:{bot_id}:{action}"
-        super().__init__(style=style, label=action.title(), emoji=emoji, custom_id=cid)
+        super().__init__(style=style, label=None, emoji=emoji, custom_id=cid)
         self.bot_id = bot_id
         self.bot_name = bot_name
         self.action = action # 'restart', 'stop', 'update'
