@@ -1,3 +1,4 @@
+import discord
 from discord import ui
 from discord.ui import Button
 import sys
