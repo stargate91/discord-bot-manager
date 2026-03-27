@@ -14,7 +14,12 @@
         "manager_log_file": "manager.log",
         "bot_log_default": "bot.log",
         "log_max_bytes": 5242880,
-        "log_backup_count": 3
+        "log_backup_count": 3,
+        "emojis": {
+            "restart": "<:rotatecw:1487047512219979777>",
+            "update": "<:refreshcw:1487047503391101008>",
+            "stop": "<:power:1487047488341807104>"
+        }
     },
     "bots": {
         "1353195232675926017": {

@@ -3,7 +3,7 @@
     "bot_stopped_alert": "🚨 **ALERTI:** A(z) **{name}** ({id}) hirtelen leállt!\nSzeretnéd, hogy újraindítsam? Használd a `/restart bot_id:{id}` parancsot.",
     "manager_status_header": "### Manager Állapot",
     "manager_status_line": "- **{name}**: {status} ({uptime}) | CPU: `{cpu}%` | RAM: `{ram} MB`",
-    "bots_status_header": "### Kezelt Botok",
+    "bots_status_header": "Kezelt Botok",
     "bot_status_line": "- **{name}** ({id}):\n  ╰ {status_text}\n  ╰ `Path: {path}`",
     "uptime_days": "{d} napja",
     "uptime_hours": "{h} órája",
@@ -81,5 +81,7 @@
     "bot_updated_title": "✅ Bot Frissítve",
     "bot_rollback_title": "⏮️ Bot Visszaállítás",
     "manager_updated_title": "✅ Manager Frissítve",
-    "update_result_title": "✅ {name} frissítve"
+    "update_result_title": "✅ {name} frissítve",
+    "status_restarting": "A Manager újraindul... 🔄",
+    "status_stopping": "A Manager leáll... ⏹️"
 }

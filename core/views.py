@@ -1,11 +1,12 @@
-import discord
 from discord import ui
 from discord.ui import Button
+import sys
+import asyncio
 from core.logger import log
 
 class BotControlButton(discord.ui.Button):
-    def __init__(self, label, style, bot_id, bot_name, action, view):
-        super().__init__(label=label, style=style)
+    def __init__(self, label="", style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):
+        super().__init__(label=label, style=style, emoji=emoji)
         self.bot_id = bot_id
         self.bot_name = bot_name
         self.action = action # 'restart', 'stop', 'update'
@@ -23,6 +24,39 @@ class BotControlButton(discord.ui.Button):
         service = self.parent_view.bot_manager.management_service
         result = ""
         
+        # SPECIAL HANDLING FOR MANAGER SELF-CONTROLS
+        if self.bot_id == "manager":
+            if self.action == "restart":
+                log.info(f"User {interaction.user} clicked SELF-RESTART for Manager")
+                service.prepare_manager_restart()
+                await interaction.followup.send(self.parent_view.i18n.get("status_restarting", "Manager restarting..."), ephemeral=True)
+                await asyncio.sleep(1)
+                os.execv(sys.executable, ['python'] + sys.argv)
+                return
+            elif self.action == "stop":
+                log.info(f"User {interaction.user} clicked SELF-STOP for Manager")
+                await interaction.followup.send(self.parent_view.i18n.get("status_stopping", "Manager shutting down..."), ephemeral=True)
+                await asyncio.sleep(1)
+                sys.exit(0)
+                return
+            elif self.action == "update":
+                log.info(f"User {interaction.user} clicked SELF-UPDATE for Manager")
+                success, output, changed, details = await service.run_manager_update()
+                if not success:
+                    await interaction.followup.send(f"Update failed:\n{output}", ephemeral=True)
+                    return
+                if not changed:
+                    await interaction.followup.send(self.parent_view.i18n.get("update_no_changes", "No updates found."), ephemeral=True)
+                    return
+                # If changed and success, trigger restart
+                service.prepare_manager_restart()
+                msg = self.parent_view.i18n.get("manager_update_success", "Manager updated. Restarting...", name="Manager", output=output)
+                await interaction.followup.send(msg, ephemeral=True)
+                await asyncio.sleep(1)
+                os.execv(sys.executable, ['python'] + sys.argv)
+                return
+
+        # STANDARD BOT CONTROLS
         if self.action == "restart":
             log.info(f"User {interaction.user} clicked RESTART for {self.bot_name} ({self.bot_id})")
             result = await service.run_restart(self.bot_id)
@@ -50,97 +84,72 @@ class BotControlButton(discord.ui.Button):
         # We don't refresh the whole status message automatically here to avoid rate limits,
         # the user can click the Global Refresh button if they want.
 
+class StatusContainer(ui.Container):
+    """A visual container box for the status content."""
+    def __init__(self, bot_manager, i18n, manager_stats, bots_stats, parent_view):
+        super().__init__(accent_color=0x2b2d31) # Modern dark accent
+        
+        # Fetch Emojis from Config
+        emoji_cfg = bot_manager.config.get("bot_settings", {}).get("emojis", {})
+        restart_emoji = emoji_cfg.get("restart", "🔄")
+        update_emoji = emoji_cfg.get("update", "🆙")
+        stop_emoji = emoji_cfg.get("stop", "⏹️")
+
+        # 1. Manager Header & Stats
+        manager_text = (
+            f"**{bot_manager.manager_name}**\n"
+            f"**{i18n.get('status_running', 'Running')}**\n"
+            f"> {i18n.get('uptime', 'Uptime')}: {manager_stats['uptime']}\n"
+            f"> {i18n.get('branch', 'Branch')}: `{manager_stats['branch']}`\n"
+            f"> {i18n.get('resources', 'Resources')}: CPU: `{manager_stats['cpu']}%` | RAM: `{int(manager_stats['ram'])} MB`"
+        )
+        self.add_item(ui.TextDisplay(manager_text))
+        
+        # Manager Buttons Row
+        mgr_row = ui.ActionRow()
+
+        # Manager Restart
+        mgr_row.add_item(BotControlButton(emoji=restart_emoji, bot_id="manager", action="restart", view=parent_view))
+        # Manager Update
+        mgr_row.add_item(BotControlButton(emoji=update_emoji, bot_id="manager", action="update", view=parent_view))
+        # Manager Stop
+        mgr_row.add_item(BotControlButton(emoji=stop_emoji, bot_id="manager", action="stop", view=parent_view))
+        
+        self.add_item(mgr_row)
+        self.add_item(ui.Separator(visible=True, spacing=discord.enums.SeparatorSpacing.large))
+
+        # 2. Managed Bots Sections
+        if bots_stats:
+            self.add_item(ui.TextDisplay(f"**{i18n.get('bots_status_header', 'Managed Bots')}**"))
+            
+            for b_id, b_info in bots_stats.items():
+                b_name = b_info["name"]
+                status_emoji = "🟢" if b_info["is_running"] else "🔴"
+                details = f"CPU: `{b_info['cpu']}%` | RAM: `{int(b_info['ram'])} MB` | Up: {b_info['uptime']}" if b_info["is_running"] else f"*{b_info['status']}*"
+                
+                bot_text = f"**{status_emoji} {b_name}** ({b_id})\n{details}\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
+                self.add_item(ui.TextDisplay(bot_text))
+                
+                bot_row = ui.ActionRow()
+                bot_row.add_item(BotControlButton(emoji=restart_emoji, bot_id=b_id, bot_name=b_name, action="restart", view=parent_view))
+                bot_row.add_item(BotControlButton(emoji=update_emoji, bot_id=b_id, bot_name=b_name, action="update", view=parent_view))
+                bot_row.add_item(BotControlButton(emoji=stop_emoji, bot_id=b_id, bot_name=b_name, action="stop", view=parent_view))
+                
+                self.add_item(bot_row)
+                self.add_item(ui.Separator())
+        else:
+            self.add_item(ui.TextDisplay(f"*{i18n.get('error_no_bots_configured', 'No bots configured.')}*"))
+
 class ModernStatusLayout(ui.LayoutView):
     """A premium, modern status view for managed bots using Components V2 layout."""
     def __init__(self, bot_manager, i18n, manager_stats, bots_stats):
         super().__init__(timeout=300)
         self.bot_manager = bot_manager
         self.i18n = i18n
-        self.manager_stats = manager_stats
-        self.bots_stats = bots_stats
         
-        self.build_layout()
-
-    def build_layout(self):
-        # 1. Manager Section
-        manager_text = (
-            f"## {self.bot_manager.manager_name}\n"
-            f"**{self.i18n.get('status_running', 'Running')}**\n"
-            f"> {self.i18n.get('uptime', 'Uptime')}: {self.manager_stats['uptime']}\n"
-            f"> {self.i18n.get('branch', 'Branch')}: `{self.manager_stats['branch']}`\n"
-            f"> {self.i18n.get('resources', 'Resources')}: CPU: `{self.manager_stats['cpu']}%` | RAM: `{int(self.manager_stats['ram'])} MB`"
-        )
-        self.add_item(ui.TextDisplay(manager_text))
-        
-        # Refresh row
-        refresh_row = ui.ActionRow()
-        refresh_btn = ui.Button(label=self.i18n.get("refresh", "Refresh"), style=discord.ButtonStyle.secondary, emoji="🔄")
-        async def refresh_callback(interaction: discord.Interaction):
-            cog = self.bot_manager.get_cog("MonitoringCog")
-            if cog:
-                await cog.status.callback(cog, interaction)
-        refresh_btn.callback = refresh_callback
-        refresh_row.add_item(refresh_btn)
-        self.add_item(refresh_row)
-
-        self.add_item(ui.Separator(visible=True, spacing=discord.enums.SeparatorSpacing.large))
-
-        # 2. Managed Bots Sections
-        if self.bots_stats:
-            self.add_item(ui.TextDisplay(f"### {self.i18n.get('bots_status_header', 'Managed Bots')}"))
-            
-            for b_id, b_info in self.bots_stats.items():
-                b_name = b_info["name"]
-                
-                if b_info["is_running"]:
-                    status_emoji = "🟢"
-                    details = f"CPU: `{b_info['cpu']}%` | RAM: `{int(b_info['ram'])} MB` | Up: {b_info['uptime']}"
-                else:
-                    status_emoji = "🔴"
-                    details = f"*{b_info['status']}*"
-                
-                bot_text = f"**{status_emoji} {b_name}** ({b_id})\n{details}\n`{self.i18n.get('path', 'Path')}: {b_info['path']}`"
-                
-                # Use TextDisplay instead of Section because Section requires an accessory
-                self.add_item(ui.TextDisplay(bot_text))
-                
-                # Buttons Row for this bot
-                bot_row = ui.ActionRow()
-                
-                # Restart Button
-                bot_row.add_item(BotControlButton(
-                    label=f"{self.i18n.get('btn_restart', 'Rest')} {b_name}", 
-                    style=discord.ButtonStyle.secondary, 
-                    bot_id=b_id, 
-                    bot_name=b_name,
-                    action="restart", 
-                    view=self
-                ))
-                
-                # Update Button
-                bot_row.add_item(BotControlButton(
-                    label=f"{self.i18n.get('btn_update', 'Upd')} {b_name}", 
-                    style=discord.ButtonStyle.secondary, 
-                    bot_id=b_id, 
-                    bot_name=b_name,
-                    action="update", 
-                    view=self
-                ))
-
-                # Stop Button
-                bot_row.add_item(BotControlButton(
-                    label=f"{self.i18n.get('btn_stop', 'Stop')} {b_name}", 
-                    style=discord.ButtonStyle.secondary, 
-                    bot_id=b_id, 
-                    bot_name=b_name,
-                    action="stop", 
-                    view=self
-                ))
-                
-                self.add_item(bot_row)
-                self.add_item(ui.Separator())
-        else:
-            self.add_item(ui.TextDisplay(f"*{self.i18n.get('error_no_bots_configured', 'No bots configured.')}*"))
+        # Build layout using a Container
+        container = StatusContainer(bot_manager, i18n, manager_stats, bots_stats, self)
+        self.add_item(container)
 
 class UpdateResultEmbed(discord.Embed):
     """A premium, modern embed for displaying update results."""

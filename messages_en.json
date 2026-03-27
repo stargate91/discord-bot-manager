@@ -3,7 +3,7 @@
     "bot_stopped_alert": "🚨 **ALERT:** **{name}** ({id}) has stopped unexpectedly!\nWould you like me to restart it? Use `/restart bot_id:{id}` command.",
     "manager_status_header": "### Manager Status",
     "manager_status_line": "- **{name}**: {status} ({uptime}) | CPU: `{cpu}%` | RAM: `{ram} MB`",
-    "bots_status_header": "### Managed Bots",
+    "bots_status_header": "Managed Bots",
     "bot_status_line": "- **{name}** ({id}):\n  ╰ {status_text}\n  ╰ `Path: {path}`",
     "uptime_days": "{d} days ago",
     "uptime_hours": "{h} hours ago",
@@ -81,5 +81,7 @@
     "bot_updated_title": "✅ Bot Updated",
     "bot_rollback_title": "⏮️ Bot Rollback",
     "manager_updated_title": "✅ Manager Updated",
-    "update_result_title": "✅ {name} updated"
+    "update_result_title": "✅ {name} updated",
+    "status_restarting": "Manager is restarting... 🔄",
+    "status_stopping": "Manager is shutting down... ⏹️"
 }
