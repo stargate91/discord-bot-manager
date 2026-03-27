@@ -208,7 +208,7 @@ class UpdateResultEmbed(discord.Embed):
         super().__init__(
             title=title,
             description=f"**{details['message']}**" if details else i18n.get("update_success", "Update successful."),
-            color=color,
+            color=discord.Color(color_val),
             timestamp=discord.utils.utcnow()
         )
         
