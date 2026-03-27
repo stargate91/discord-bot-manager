@@ -39,11 +39,12 @@ class BotManager(commands.Bot):
         bot_settings = self.config.get("bot_settings", {})
         
         # Apply log configuration from config.json
-        from core.logger import reconfigure_log
+        from core.logger import reconfigure_log, setup_discord_logging
         log_file = bot_settings.get("manager_log_file", "manager.log")
         max_bytes = bot_settings.get("log_max_bytes", 5*1024*1024)
         backup_count = bot_settings.get("log_backup_count", 3)
         reconfigure_log(log_file, max_bytes, backup_count)
+        setup_discord_logging(log_file, max_bytes, backup_count)
         
         # We start the 'Localization Service' so the bot can speak different languages
         self.language = bot_settings.get("language", "hu")
@@ -56,7 +57,7 @@ class BotManager(commands.Bot):
         self.command_prefix = bot_settings.get("command_prefix", "!")
         self.command_suffix = bot_settings.get("command_suffix", "")
         intents = discord.Intents.default()
-        intents.members = True
+        intents.members = False # Temporarily disabled to test for gateway handshake hang
         intents.message_content = True
         
         # We call the 'super' init to finish setting up the Discord bot
@@ -181,9 +182,10 @@ class BotManager(commands.Bot):
 
     async def on_ready(self):
         """This runs when the bot is fully online and ready to go."""
-        log.info(f"on_ready event received. Logged in as: {self.user}")
+        log.info(f"on_ready event received. Logged in as: {self.user} (ID: {self.user.id if self.user else 'None'})")
         # We set the bot's activity (what it is 'watching')
         count = len(self.bots)
+        log.info(f"Setting presence for {count} bots...")
         activity_msg = self.i18n.get("activity_text", "Watching {count} bots...", count=count)
         
         activity = discord.Activity(
@@ -197,6 +199,11 @@ class BotManager(commands.Bot):
         try:
             if self.admin_channel_id:
                 channel = self.get_channel(int(self.admin_channel_id))
+                if not channel:
+                    try:
+                        channel = await self.fetch_channel(int(self.admin_channel_id))
+                    except Exception:
+                        pass
                 if channel:
                     msg = self.i18n.get("manager_online_log", "Manager {name} is back online.", name=self.manager_name)
                     await channel.send(msg)
@@ -240,6 +247,7 @@ class BotManager(commands.Bot):
     @tasks.loop(seconds=60)
     async def check_processes(self):
         """This runs every minute to make sure all our bots are still running."""
+        log.info("Manager Heartbeat: Checking processes...")
         stopped_bots = self.process_manager.fetch_unexpected_stops()
         for bot_id, _ in stopped_bots:
             bot = self.bots.get(bot_id)
