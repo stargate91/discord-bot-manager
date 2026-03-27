@@ -43,7 +43,8 @@ class MonitoringCog(commands.Cog):
         manager_stats = {
             "cpu": self_cpu,
             "ram": self_ram_mb,
-            "uptime": uptime_str
+            "uptime": uptime_str,
+            "branch": self.bot.config.get("bot_settings", {}).get("git_branch", "origin/main")
         }
         
         # 2. We gather statistics for every Managed Bot
@@ -92,7 +93,7 @@ class MonitoringCog(commands.Cog):
         try:
             from core.views import ModernStatusView
             view = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats)
-            await interaction.followup.send(view=view)
+            await interaction.followup.send(embeds=view.embeds, view=view)
         except Exception as e:
             log.error(f"Error in /status modern layout: {e}", exc_info=True)
             # Fallback to simple message if the modern layout fails

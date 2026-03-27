@@ -66,10 +66,17 @@ class ManagementCog(commands.Cog):
     async def update(self, interaction: discord.Interaction, bot_id: str):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /update for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
-        result = await self.bot.management_service.run_update(bot_id)
-        if len(result) > 1900:
-            result = result[:1000] + "\n\n... [TRUNCATED] ...\n\n" + result[-800:]
-        await interaction.followup.send(result, ephemeral=True)
+        result_msg, details = await self.bot.management_service.run_update(bot_id)
+        
+        if details:
+            from core.views import UpdateResultEmbed
+            title = self.bot.i18n.get("bot_updated_title", "✅ Bot Updated")
+            embed = UpdateResultEmbed(self.bot.i18n, title, details)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            if len(result_msg) > 1900:
+                result_msg = result_msg[:1000] + "\n\n... [TRUNCATED] ...\n\n" + result_msg[-800:]
+            await interaction.followup.send(result_msg, ephemeral=True)
 
     @app_commands.command(name="restart", description="Restart a bot without update.")
     @app_commands.describe(bot_id="The ID of the bot to restart")
@@ -90,8 +97,15 @@ class ManagementCog(commands.Cog):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /rollback for bot: {bot_id}")
         await interaction.response.defer(ephemeral=True)
         
-        result = await self.bot.management_service.run_rollback(bot_id)
-        await interaction.followup.send(result, ephemeral=True)
+        result_msg, details = await self.bot.management_service.run_rollback(bot_id)
+        
+        if details:
+            from core.views import UpdateResultEmbed
+            title = self.bot.i18n.get("bot_rollback_title", "⏮️ Bot Rollback")
+            embed = UpdateResultEmbed(self.bot.i18n, title, details, is_rollback=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            await interaction.followup.send(result_msg, ephemeral=True)
 
     @app_commands.command(name="logs", description="Get last N lines of a bot log file.")
     @app_commands.describe(bot_id="The ID of the bot", lines="Number of lines (default: 50, all: 0)")
@@ -195,21 +209,30 @@ class ManagementCog(commands.Cog):
         results = []
         
         try:
-            success, output = await self.bot.management_service.run_manager_update()
+            success, output, changed, details = await self.bot.management_service.run_manager_update()
             
             if not success:
                 error_prefix = self.bot.i18n.get("error_git_update_failed", "Git update failed.")
                 await interaction.followup.send(f"{error_prefix}\n{output}", ephemeral=True)
                 return
 
+            if not changed:
+                # No changes found, skip restart
+                update_status = self.bot.i18n.get("update_no_changes", "No updates found, restart skipped.")
+                await interaction.followup.send(update_status, ephemeral=True)
+                return
+
             # Final response and restart
-            update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting...", name=self.bot.manager_name, output=output)
-            
-            # Truncate if needed
-            if len(update_status) > 1900:
-                update_status = update_status[:1000] + "\n... [TRUNCATED] ...\n" + update_status[-800:]
-                
-            await interaction.followup.send(update_status, ephemeral=True)
+            if details:
+                from core.views import UpdateResultEmbed
+                title = self.bot.i18n.get("manager_updated_title", "✅ Manager Updated")
+                embed = UpdateResultEmbed(self.bot.i18n, title, details)
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting...", name=self.bot.manager_name, output=output)
+                if len(update_status) > 1900:
+                    update_status = update_status[:1000] + "\n... [TRUNCATED] ...\n" + update_status[-800:]
+                await interaction.followup.send(update_status, ephemeral=True)
             
             log.info("Manager updated, restarting process...")
             self.bot.management_service.prepare_manager_restart()

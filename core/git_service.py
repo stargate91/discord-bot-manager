@@ -9,24 +9,53 @@ class GitService:
         self.config = config
         self.messages = messages
 
-    def clean_locks(self, path):
-        """This function deletes '.lock' files that sometimes stop Git from working on Windows."""
-        lock_path = os.path.join(path, ".git", "index.lock")
-        if os.path.exists(lock_path):
-            try:
-                os.remove(lock_path)
-                log.info(f"Cleaned stale lock: {lock_path}")
-                return True
-            except Exception as e:
-                # If we couldn't remove it, we log the error
-                log.error(f"Failed to clean lock {lock_path}: {e}")
-        return False
+    def get_commit_details(self, path, rev="HEAD"):
+        """Gets the hash, author, and subject of a specific revision."""
+        try:
+            # Hash (short)
+            commit_hash = subprocess.check_output(["git", "rev-parse", "--short", rev], cwd=path).decode('utf-8').strip()
+            # Author
+            author = subprocess.check_output(["git", "show", "-s", "--format=%an", rev], cwd=path).decode('utf-8').strip()
+            # Message
+            message = subprocess.check_output(["git", "show", "-s", "--format=%s", rev], cwd=path).decode('utf-8').strip()
+            # Date (relative)
+            date = subprocess.check_output(["git", "show", "-s", "--format=%cr", rev], cwd=path).decode('utf-8').strip()
+            
+            return {
+                "hash": commit_hash,
+                "author": author,
+                "message": message,
+                "date": date
+            }
+        except Exception as e:
+            log.error(f"Failed to get commit details for {rev} at {path}: {e}")
+            return None
+
+    def get_remote_url(self, path):
+        """Gets the web URL of the remote origin."""
+        try:
+            url = subprocess.check_output(["git", "config", "--get", "remote.origin.url"], cwd=path).decode('utf-8').strip()
+            # Convert SSH or .git URL to standard HTTPS web URL
+            if url.startswith("git@"):
+                url = url.replace(":", "/").replace("git@", "https://")
+            if url.endswith(".git"):
+                url = url[:-4]
+            return url
+        except Exception:
+            return None
 
     def update_repo(self, path, branch="origin/main"):
         """This function downloads the latest code from GitHub."""
         self.clean_locks(path)
         results = []
         try:
+            # 0. Get current HEAD hash before update
+            old_hash = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], 
+                cwd=path, 
+                stderr=subprocess.STDOUT
+            ).decode('utf-8').strip()
+
             # 1. We ask Git to fetch all the latest changes
             fetch_out = subprocess.check_output(
                 ["git", "fetch", "--all"], 
@@ -42,20 +71,34 @@ class GitService:
                 stderr=subprocess.STDOUT
             ).decode('utf-8')
             results.append(reset_out)
+
+            # 3. Get new HEAD hash after update
+            new_hash = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], 
+                cwd=path, 
+                stderr=subprocess.STDOUT
+            ).decode('utf-8').strip()
+
+            changed = old_hash != new_hash
+            details = None
+            if changed:
+                details = self.get_commit_details(path)
+                if details:
+                    details["repo_url"] = self.get_remote_url(path)
             
-            return True, "\n".join(results)
+            return True, "\n".join(results), changed, details
         except subprocess.CalledProcessError as e:
             # If a command fails, we get the error message it outputted
             error_msg = e.output.decode('utf-8') if e.output else str(e)
             log.error(f"Git update failed at {path}: {error_msg}")
-            return False, error_msg
+            return False, error_msg, False, None
         except Exception as e:
             log.error(f"Unexpected error during git update at {path}: {e}")
-            return False, str(e)
+            return False, str(e), False, None
 
     def rollback_repo(self, path):
         """This function undoes the last update if it broke something."""
-        self.clean_locks(path)
+        # self.clean_locks(path) # Removed to avoid clutter if not needed here
         try:
             # HEAD@{1} is a Git trick to go back one step in time
             output = subprocess.check_output(
@@ -63,13 +106,18 @@ class GitService:
                 cwd=path,
                 stderr=subprocess.STDOUT
             ).decode('utf-8')
-            return True, output
+            
+            details = self.get_commit_details(path)
+            if details:
+                details["repo_url"] = self.get_remote_url(path)
+                
+            return True, output, True, details
         except subprocess.CalledProcessError as e:
             error_msg = e.output.decode('utf-8') if e.output else str(e)
             log.error(f"Rollback failed at {path}: {error_msg}")
-            return False, error_msg
+            return False, error_msg, False, None
         except Exception as e:
-            return False, str(e)
+            return False, str(e), False, None
 
     def install_dependencies(self, path):
         """This function installs the libraries the bot needs using 'pip'."""

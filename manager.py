@@ -146,19 +146,20 @@ class BotManager(commands.Bot):
         await self.change_presence(activity=activity)
         log.info(f"Bot Manager online. Neural-link active. {self.user} ({self.manager_name})")
 
-        # We check if the manager was just restarted and notify the admins
-        restart_info_path = os.path.join("tmp", "manager_restart.json")
-        if os.path.exists(restart_info_path):
-            try:
-                if self.admin_channel_id:
-                    channel = self.get_channel(int(self.admin_channel_id))
-                    if channel:
-                        msg = self.i18n.get("manager_online_log", "Manager {name} is back online.", name=self.manager_name)
-                        await channel.send(msg)
-                # We delete the temporary file after we're done
+        # Notify admins that the manager is online (always)
+        try:
+            if self.admin_channel_id:
+                channel = self.get_channel(int(self.admin_channel_id))
+                if channel:
+                    msg = self.i18n.get("manager_online_log", "Manager {name} is back online.", name=self.manager_name)
+                    await channel.send(msg)
+            
+            # We clean up the temporary file if it exists
+            restart_info_path = os.path.join("tmp", "manager_restart.json")
+            if os.path.exists(restart_info_path):
                 os.remove(restart_info_path)
-            except Exception as e:
-                log.error(f"Failed to send restart notification: {e}")
+        except Exception as e:
+            log.error(f"Failed to send startup notification: {e}")
 
     async def notify_admin(self, msg):
         """This is a helper function to send messages to our admin channel."""
