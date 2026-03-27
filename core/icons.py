@@ -16,10 +16,10 @@ class Icons:
             
             # Map them by name if they are in our expected set
             for e in app_emojis:
-                if e.name == "rotatecw":
+                if e.name in ["arrowclockwise", "rotatecw"]:
                     cls.RESTART = e
                     log.info(f"[Icons]   Mapped {e.name} as RESTART icon (Full Emoji)")
-                elif e.name == "refreshcw":
+                elif e.name in ["arrowsclockwise", "refreshcw"]:
                     cls.UPDATE = e
                     log.info(f"[Icons]   Mapped {e.name} as UPDATE icon (Full Emoji)")
                 elif e.name == "power":
@@ -44,6 +44,7 @@ class Icons:
         
         def get(name, default):
             val = icons_data.get(name, default)
+            
             # Manual parse for custom emojis if from_str is failing in some environments
             if isinstance(val, str) and val.startswith("<") and ":" in val:
                 try:
@@ -63,9 +64,9 @@ class Icons:
             log.info(f"[Icons]   {name} -> {pe} (ID: {pe.id})")
             return pe
 
-        cls.RESTART = get("restart", "<:rotatecw:1487065722562674838>")
-        cls.UPDATE = get("update", "<:refreshcw:1487065721090478202>")
-        cls.STOP = get("stop", "<:power:1487065719353905336>")
+        cls.RESTART = get("restart", "<:arrowclockwise:1487098935787917394>")
+        cls.UPDATE = get("update", "<:arrowsclockwise:1487098937256181866>")
+        cls.STOP = get("stop", "<:power:1487098947272048811>")
 
 # Default initialization
 class DefaultConfig: emojis = {}

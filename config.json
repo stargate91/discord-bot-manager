@@ -16,9 +16,9 @@
         "log_max_bytes": 5242880,
         "log_backup_count": 3,
         "emojis": {
-            "restart": "<:rotatecw:1487065722562674838>",
-            "update": "<:refreshcw:1487065721090478202>",
-            "stop": "<:power:1487065719353905336>"
+            "restart": "<:arrowclockwise:1487098935787917394>",
+            "update": "<:arrowsclockwise:1487098937256181866>",
+            "stop": "<:power:1487098947272048811>"
         }
     },
     "bots": {
