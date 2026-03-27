@@ -35,9 +35,9 @@ class Icons:
 
 class BotControlButton(discord.ui.Button):
     def __init__(self, style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):
-        # Debug: using action name as label to ensure visibility
+        # Custom IDs for state persistence and clean emoji-only buttons
         cid = f"status:{bot_id}:{action}"
-        super().__init__(style=style, label=action.capitalize(), emoji=emoji, custom_id=cid)
+        super().__init__(style=style, label=None, emoji=emoji, custom_id=cid)
         self.bot_id = bot_id
         self.bot_name = bot_name
         self.action = action # 'restart', 'stop', 'update'
