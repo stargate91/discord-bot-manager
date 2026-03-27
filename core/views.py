@@ -6,7 +6,12 @@ import asyncio
 from core.logger import log
 
 class BotControlButton(discord.ui.Button):
-    def __init__(self, label="", style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):
+    def __init__(self, label=None, style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):
+        if emoji and isinstance(emoji, str) and ":" in emoji:
+            try:
+                emoji = discord.PartialEmoji.from_str(emoji)
+            except:
+                pass
         super().__init__(label=label, style=style, emoji=emoji)
         self.bot_id = bot_id
         self.bot_name = bot_name
