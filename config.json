@@ -1,14 +1,21 @@
 {
     "settings": {
         "guild_id": "1083433370815582240",
-        "admin_channel_id": "1486516075905417216"
+        "admin_channel_id": "1486516075905417216",
+        "admin_role_id": "1486685311919460402"
     },
     "bot_settings": {
         "language": "hu",
         "command_prefix": "!",
         "command_suffix": "_b",
+        "log_default_lines": 50,
+        "purge_limit": 1000,
         "check_interval_seconds": 60,
         "git_branch": "origin/main",
+        "requirements_file": "requirements.txt",
+        "rollback_ref": "HEAD@{1}",
+        "protected_env_vars": ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"],
+        "temp_dir": "tmp",
         "stop_timeout": 5,
         "restart_wait": 1.0,
         "manager_log_file": "manager.log",
@@ -20,6 +27,12 @@
             "update": "<:arrowsclockwise:1487098937256181866>",
             "stop": "<:power:1487098947272048811>"
         }
+    },
+    "ui_settings": {
+        "accent_color": 2829617,
+        "view_timeout": 300,
+        "update_success_color": 3066993,
+        "update_rollback_color": 15105570
     },
     "bots": {
         "1353195232675926017": {

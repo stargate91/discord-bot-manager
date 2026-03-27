@@ -40,7 +40,8 @@ class ManagementService:
 
                 # 2. Prepare environment
                 bot_env = os.environ.copy()
-                for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
+                protected_vars = self.config.get("bot_settings", {}).get("protected_env_vars", ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"])
+                for key in protected_vars:
                     bot_env.pop(key, None)
                 
                 bot_env["MANAGED_LOGGING"] = "1"
@@ -183,6 +184,7 @@ class ManagementService:
 
     def prepare_manager_restart(self):
         """Saves the restart flag before the process exits."""
-        os.makedirs("tmp", exist_ok=True)
-        with open(os.path.join("tmp", "manager_restart.json"), "w") as f:
+        temp_dir = self.config.get("bot_settings", {}).get("temp_dir", "tmp")
+        os.makedirs(temp_dir, exist_ok=True)
+        with open(os.path.join(temp_dir, "manager_restart.json"), "w") as f:
             json.dump({"restart": True}, f)

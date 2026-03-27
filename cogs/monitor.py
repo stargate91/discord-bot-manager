@@ -19,10 +19,10 @@ class MonitoringCog(commands.Cog):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /status")
         
         # We 'defer' the response so the interaction doesn't time out while we gather data
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         
         if not self.bot.bots:
-            await interaction.followup.send(self.bot.i18n.get("error_no_bots_configured", "No bots configured."), ephemeral=True)
+            await interaction.followup.send(self.bot.i18n.get("error_no_bots_configured", "No bots configured."), ephemeral=False)
             return
 
         # 1. We gather statistics for the Manager itself
@@ -98,7 +98,7 @@ class MonitoringCog(commands.Cog):
             log.error(f"Error in /status modern layout: {e}", exc_info=True)
             # Fallback to simple message if the modern layout fails
             msg = self.bot.i18n.get("status_error", "Status Error: {error}", error=str(e))
-            await interaction.followup.send(msg, ephemeral=True)
+            await interaction.followup.send(msg, ephemeral=False)
 
 async def setup(bot):
     await bot.add_cog(MonitoringCog(bot))

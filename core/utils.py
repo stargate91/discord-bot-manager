@@ -18,10 +18,37 @@ def is_admin_context():
         if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
             return False
             
-        # Check if the user is an administrator
-        if not interaction.user.guild_permissions.administrator:
+        # Check if the user is an administrator OR has the specific admin role
+        is_admin_perm = interaction.user.guild_permissions.administrator
+        admin_role_id = getattr(bot, 'admin_role_id', None)
+        
+        has_admin_role = False
+        if admin_role_id and hasattr(interaction.user, 'roles'):
+            has_admin_role = any(str(role.id) == str(admin_role_id) for role in interaction.user.roles)
+            
+        if not (is_admin_perm or has_admin_role):
             return False
             
         # If everything is correct, we return True
         return True
     return app_commands.check(predicate)
+
+def is_admin_prefix_context():
+    """Check for prefix commands (Context instead of Interaction)."""
+    async def predicate(ctx: commands.Context) -> bool:
+        bot = ctx.bot
+        guild_id = getattr(bot, 'guild_id', None)
+        admin_channel_id = getattr(bot, 'admin_channel_id', None)
+
+        if guild_id and str(ctx.guild.id) != str(guild_id):
+            return False
+        if admin_channel_id and str(ctx.channel.id) != str(admin_channel_id):
+            return False
+            
+        is_admin_perm = ctx.author.guild_permissions.administrator
+        admin_role_id = getattr(bot, 'admin_role_id', None)
+        has_admin_role = any(str(role.id) == str(admin_role_id) for role in ctx.author.roles) if admin_role_id else False
+        
+        return is_admin_perm or has_admin_role
+        
+    return commands.check(predicate)

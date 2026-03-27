@@ -19,13 +19,31 @@ class BotControlButton(discord.ui.Button):
         self.parent_view = view
 
     async def callback(self, interaction: discord.Interaction):
-        # We check if the user is allowed to do this (admin)
-        from core.utils import is_admin_context
-        # Since this is a button callback, we can't use the decorator easily, 
-        # but the view was already sent to an admin. Double check:
-        # (This is simplified, assuming only admins see this view)
+        # 1. Permission and context check (Buttons should be Admin-only)
+        bot = interaction.client
+        i18n = self.parent_view.i18n
         
-        await interaction.response.defer(ephemeral=True)
+        # Administrator permission OR specific role check
+        is_admin_perm = interaction.user.guild_permissions.administrator
+        admin_role_id = getattr(bot, 'admin_role_id', None)
+        has_admin_role = any(str(role.id) == str(admin_role_id) for role in interaction.user.roles) if admin_role_id else False
+        
+        if not (is_admin_perm or has_admin_role):
+            await interaction.response.send_message(i18n.get("error_admin_only", "❌ Administrator permissions or specific admin role required."), ephemeral=True)
+            return
+            
+        # Context (Guild/Channel) check
+        guild_id = getattr(bot, 'guild_id', None)
+        admin_channel_id = getattr(bot, 'admin_channel_id', None)
+        
+        if guild_id and str(interaction.guild_id) != str(guild_id):
+            await interaction.response.send_message(i18n.get("error_invalid_guild", "❌ Invalid Server"), ephemeral=True)
+            return
+        if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
+            await interaction.response.send_message(i18n.get("error_admin_channel_only", "❌ This can only be used in the admin channel."), ephemeral=True)
+            return
+            
+        await interaction.response.defer(ephemeral=False)
         
         service = self.parent_view.bot_manager.management_service
         result = ""
@@ -35,13 +53,13 @@ class BotControlButton(discord.ui.Button):
             if self.action == "restart":
                 log.info(f"User {interaction.user} clicked SELF-RESTART for Manager")
                 service.prepare_manager_restart()
-                await interaction.followup.send(self.parent_view.i18n.get("status_restarting", "Manager restarting..."), ephemeral=True)
+                await interaction.followup.send(self.parent_view.i18n.get("status_restarting", "Manager restarting..."), ephemeral=False)
                 await asyncio.sleep(1)
                 os.execv(sys.executable, ['python'] + sys.argv)
                 return
             elif self.action == "stop":
                 log.info(f"User {interaction.user} clicked SELF-STOP for Manager")
-                await interaction.followup.send(self.parent_view.i18n.get("status_stopping", "Manager shutting down..."), ephemeral=True)
+                await interaction.followup.send(self.parent_view.i18n.get("status_stopping", "Manager shutting down..."), ephemeral=False)
                 await asyncio.sleep(1)
                 sys.exit(0)
                 return
@@ -49,15 +67,16 @@ class BotControlButton(discord.ui.Button):
                 log.info(f"User {interaction.user} clicked SELF-UPDATE for Manager")
                 success, output, changed, details = await service.run_manager_update()
                 if not success:
-                    await interaction.followup.send(f"Update failed:\n{output}", ephemeral=True)
+                    msg = i18n.get("error_update_failed_output", "❌ Update failed:\n{output}", output=output)
+                    await interaction.followup.send(msg, ephemeral=False)
                     return
                 if not changed:
-                    await interaction.followup.send(self.parent_view.i18n.get("update_no_changes", "No updates found."), ephemeral=True)
+                    await interaction.followup.send(self.parent_view.i18n.get("update_no_changes", "No updates found."), ephemeral=False)
                     return
                 # If changed and success, trigger restart
                 service.prepare_manager_restart()
                 msg = self.parent_view.i18n.get("manager_update_success", "Manager updated. Restarting...", name="Manager", output=output)
-                await interaction.followup.send(msg, ephemeral=True)
+                await interaction.followup.send(msg, ephemeral=False)
                 await asyncio.sleep(1)
                 os.execv(sys.executable, ['python'] + sys.argv)
                 return
@@ -78,7 +97,7 @@ class BotControlButton(discord.ui.Button):
                 from core.views import UpdateResultEmbed
                 title = self.parent_view.i18n.get("update_result_title", "✅ {name} updated", name=self.bot_name)
                 embed = UpdateResultEmbed(self.parent_view.i18n, title, details)
-                await interaction.followup.send(embed=embed, ephemeral=True)
+                await interaction.followup.send(embed=embed, ephemeral=False)
                 return
             else:
                 result = result_msg
@@ -86,14 +105,16 @@ class BotControlButton(discord.ui.Button):
         if len(result) > 1900:
             result = result[:1000] + "\n... [TRUNCATED] ...\n" + result[-800:]
             
-        await interaction.followup.send(result, ephemeral=True)
+        await interaction.followup.send(result, ephemeral=False)
         # We don't refresh the whole status message automatically here to avoid rate limits,
         # the user can click the Global Refresh button if they want.
 
 class StatusContainer(Container):
     """A visual container box for the status content."""
     def __init__(self, bot_manager, i18n, manager_stats, bots_stats, parent_view):
-        super().__init__(accent_color=0x2b2d31) # Modern dark accent
+        ui = getattr(bot_manager, 'ui_settings', {})
+        accent = ui.get("accent_color", 0x2b2d31)
+        super().__init__(accent_color=accent) # Dynamic accent color
         
         # We use the Icons class which was setup in manager.py
         restart_emoji = Icons.RESTART
@@ -101,12 +122,14 @@ class StatusContainer(Container):
         stop_emoji = Icons.STOP
 
         # 1. Manager Header & Stats
+        cpu_label = i18n.get("cpu", "CPU")
+        ram_label = i18n.get("ram", "RAM")
         manager_text = (
             f"**{bot_manager.manager_name}**\n"
             f"**{i18n.get('status_running', 'Running')}**\n"
             f"> {i18n.get('uptime', 'Uptime')}: {manager_stats['uptime']}\n"
             f"> {i18n.get('branch', 'Branch')}: `{manager_stats['branch']}`\n"
-            f"> {i18n.get('resources', 'Resources')}: CPU: `{manager_stats['cpu']}%` | RAM: `{int(manager_stats['ram'])} MB`"
+            f"> {i18n.get('resources', 'Resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB`"
         )
         self.add_item(TextDisplay(manager_text))
         
@@ -127,12 +150,20 @@ class StatusContainer(Container):
         if bots_stats:
             self.add_item(TextDisplay(f"**{i18n.get('bots_status_header', 'Managed Bots')}**"))
             
-            for b_id, b_info in bots_stats.items():
+            # We keep track of the indexed for separator logic
+            bot_list = list(bots_stats.items())
+            for i, (b_id, b_info) in enumerate(bot_list):
                 b_name = b_info["name"]
-                status_emoji = "🟢" if b_info["is_running"] else "🔴"
-                details = f"CPU: `{b_info['cpu']}%` | RAM: `{int(b_info['ram'])} MB` | Up: {b_info['uptime']}" if b_info["is_running"] else f"*{b_info['status']}*"
                 
-                bot_text = f"**{status_emoji} {b_name}** ({b_id})\n{details}\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
+                if b_info["is_running"]:
+                    status_emoji = "🟢"
+                    up_label = i18n.get("uptime_short", "Up")
+                    details = f"{cpu_label}: `{b_info['cpu']}%` | {ram_label}: `{int(b_info['ram'])} MB` | {up_label}: {b_info['uptime']}"
+                    bot_text = f"**{status_emoji} {b_name}** ({b_id})\n{details}\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
+                else:
+                    # If not running, b_info['status'] already contains the red dot
+                    bot_text = f"**{b_name}** ({b_id})\n*{b_info['status']}*\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
+                
                 self.add_item(TextDisplay(bot_text))
                 
                 bot_row = ActionRow()
@@ -141,14 +172,19 @@ class StatusContainer(Container):
                 bot_row.add_item(BotControlButton(emoji=stop_emoji, bot_id=b_id, bot_name=b_name, action="stop", view=parent_view))
                 
                 self.add_item(bot_row)
-                self.add_item(Separator())
+                
+                # Only add separator if NOT the last bot
+                if i < len(bot_list) - 1:
+                    self.add_item(Separator())
         else:
             self.add_item(TextDisplay(f"*{i18n.get('error_no_bots_configured', 'No bots configured.')}*"))
 
 class ModernStatusView(LayoutView):
     """A premium, modern status view for managed bots using Components V2 layout."""
     def __init__(self, bot_manager, i18n, manager_stats, bots_stats):
-        super().__init__(timeout=300)
+        ui = getattr(bot_manager, 'ui_settings', {})
+        timeout = ui.get("view_timeout", 300)
+        super().__init__(timeout=timeout)
         self.bot_manager = bot_manager
         self.i18n = i18n
         
@@ -158,8 +194,17 @@ class ModernStatusView(LayoutView):
 
 class UpdateResultEmbed(discord.Embed):
     """A premium, modern embed for displaying update results."""
-    def __init__(self, i18n, title, details, is_rollback=False):
-        color = discord.Color.green() if not is_rollback else discord.Color.orange()
+    def __init__(self, i18n, title, details, ui_settings=None, is_rollback=False):
+        color_val = 0x2ecc71 # Green default
+        if is_rollback:
+            color_val = 0xe67e22 # Orange default
+            
+        if ui_settings:
+            if is_rollback:
+                color_val = ui_settings.get("update_rollback_color", color_val)
+            else:
+                color_val = ui_settings.get("update_success_color", color_val)
+
         super().__init__(
             title=title,
             description=f"**{details['message']}**" if details else i18n.get("update_success", "Update successful."),
@@ -169,7 +214,6 @@ class UpdateResultEmbed(discord.Embed):
         
         if details:
             self.add_field(name=i18n.get("hash", "Hash"), value=f"`{details['hash']}`", inline=True)
-            self.add_field(name=i18n.get("author", "Author"), value=details['author'], inline=True)
             self.add_field(name=i18n.get("date", "Date"), value=details['date'], inline=True)
             
             if details.get("pip_status"):

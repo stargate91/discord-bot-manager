@@ -110,9 +110,10 @@ class GitService:
         """This function undoes the last update if it broke something."""
         # self.clean_locks(path) # Removed to avoid clutter if not needed here
         try:
-            # HEAD@{1} is a Git trick to go back one step in time
+            # Rollback ref from config
+            rollback_ref = self.config.get("bot_settings", {}).get("rollback_ref", "HEAD@{1}")
             output = subprocess.check_output(
-                ["git", "reset", "--hard", "HEAD@{1}"],
+                ["git", "reset", "--hard", rollback_ref],
                 cwd=path,
                 stderr=subprocess.STDOUT
             ).decode('utf-8')
@@ -139,8 +140,9 @@ class GitService:
             
         try:
             # We run 'pip install' just like we would in a terminal
+            req_file = self.config.get("bot_settings", {}).get("requirements_file", "requirements.txt")
             output = subprocess.check_output(
-                [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"],
+                [sys.executable, "-m", "pip", "install", "-r", req_file],
                 cwd=path,
                 stderr=subprocess.STDOUT
             ).decode('utf-8')

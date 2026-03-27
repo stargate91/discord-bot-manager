@@ -7,7 +7,7 @@ import asyncio
 import subprocess
 import sys
 from collections import deque
-from core.utils import is_admin_context
+from core.utils import is_admin_context, is_admin_prefix_context
 from core.logger import log
 
 async def bot_id_autocomplete(
@@ -59,64 +59,67 @@ class ManagementCog(commands.Cog):
         self.sync_prefix.name = f"sync{suffix}"
         self.clear_commands_prefix.name = f"clear_commands{suffix}"
 
-    @app_commands.command(name="update", description="Update and restart a bot by ID.")
+    @app_commands.command(name="update", description="[Bot Dev] Update and restart a bot by ID.")
     @app_commands.describe(bot_id="The ID of the bot to update")
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def update(self, interaction: discord.Interaction, bot_id: str):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /update for bot: {bot_id}")
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         result_msg, details = await self.bot.management_service.run_update(bot_id)
         
         if details:
             from core.views import UpdateResultEmbed
             title = self.bot.i18n.get("bot_updated_title", "✅ Bot Updated")
-            embed = UpdateResultEmbed(self.bot.i18n, title, details)
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            embed = UpdateResultEmbed(self.bot.i18n, title, details, ui_settings=self.bot.ui_settings)
+            await interaction.followup.send(embed=embed, ephemeral=False)
         else:
             if len(result_msg) > 1900:
                 result_msg = result_msg[:1000] + "\n\n... [TRUNCATED] ...\n\n" + result_msg[-800:]
-            await interaction.followup.send(result_msg, ephemeral=True)
+            await interaction.followup.send(result_msg, ephemeral=False)
 
-    @app_commands.command(name="restart", description="Restart a bot without update.")
+    @app_commands.command(name="restart", description="[Bot Dev] Restart a bot without update.")
     @app_commands.describe(bot_id="The ID of the bot to restart")
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def restart(self, interaction: discord.Interaction, bot_id: str):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /restart for bot: {bot_id}")
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         
         result = await self.bot.management_service.run_restart(bot_id)
-        await interaction.followup.send(result, ephemeral=True)
+        await interaction.followup.send(result, ephemeral=False)
 
-    @app_commands.command(name="rollback", description="Rollback bot to previous Git state (HEAD@{1}).")
+    @app_commands.command(name="rollback", description="[Bot Dev] Rollback bot to previous Git state (HEAD@{1}).")
     @app_commands.describe(bot_id="The ID of the bot to rollback")
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def rollback(self, interaction: discord.Interaction, bot_id: str):
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /rollback for bot: {bot_id}")
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         
         result_msg, details = await self.bot.management_service.run_rollback(bot_id)
         
         if details:
             from core.views import UpdateResultEmbed
             title = self.bot.i18n.get("bot_rollback_title", "⏮️ Bot Rollback")
-            embed = UpdateResultEmbed(self.bot.i18n, title, details, is_rollback=True)
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            embed = UpdateResultEmbed(self.bot.i18n, title, details, ui_settings=self.bot.ui_settings, is_rollback=True)
+            await interaction.followup.send(embed=embed, ephemeral=False)
         else:
-            await interaction.followup.send(result_msg, ephemeral=True)
+            await interaction.followup.send(result_msg, ephemeral=False)
 
-    @app_commands.command(name="logs", description="Get last N lines of a bot log file.")
-    @app_commands.describe(bot_id="The ID of the bot", lines="Number of lines (default: 50, all: 0)")
+    @app_commands.command(name="logs", description="[Bot Dev] Get last N lines of a bot log file.")
+    @app_commands.describe(bot_id="The ID of the bot", lines="Number of lines")
     @is_admin_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
-    async def logs(self, interaction: discord.Interaction, bot_id: str, lines: int = 50):
+    async def logs(self, interaction: discord.Interaction, bot_id: str, lines: int | None = None):
+        if lines is None:
+            lines = self.bot.config.get("bot_settings", {}).get("log_default_lines", 50)
+            
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /logs ({lines} lines) for bot: {bot_id}")
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         
         if bot_id not in self.bot.bots:
-            await interaction.followup.send(str(self.bot.i18n.get("error_unknown_bot", "Unknown Bot ID.")), ephemeral=True)
+            await interaction.followup.send(str(self.bot.i18n.get("error_unknown_bot", "Unknown Bot ID.")), ephemeral=False)
             return
             
         bot = self.bot.bots[bot_id]
@@ -132,7 +135,7 @@ class ManagementCog(commands.Cog):
                     
                     content = "".join(last_lines)
                     if not content:
-                        await interaction.followup.send(self.bot.i18n.get("error_log_empty", "Log file is empty."), ephemeral=True)
+                        await interaction.followup.send(self.bot.i18n.get("error_log_empty", "Log file is empty."), ephemeral=False)
                         return
 
                     temp_file = "temp_logs.txt"
@@ -141,23 +144,26 @@ class ManagementCog(commands.Cog):
                     
                     file = discord.File(temp_file, filename=f"{bot.name}_last_{lines}_lines.txt")
                     header = self.bot.i18n.get("logs_header", "Last {lines} lines of {name}:", name=bot.name, lines=lines)
-                    await interaction.followup.send(header, file=file, ephemeral=True)
+                    await interaction.followup.send(header, file=file, ephemeral=False)
                     os.remove(temp_file)
                 else:
                     file = discord.File(log_path, filename=f"{bot.name}_full_logs.txt")
                     header = self.bot.i18n.get("logs_full_header", "Full log of {name}:", name=bot.name)
-                    await interaction.followup.send(header, file=file, ephemeral=True)
+                    await interaction.followup.send(header, file=file, ephemeral=False)
             except Exception as e:
-                await interaction.followup.send(self.bot.i18n.get("error_log_fetch", "Error fetching logs: {error}", error=str(e)), ephemeral=True)
+                await interaction.followup.send(self.bot.i18n.get("error_log_fetch", "Error fetching logs: {error}", error=str(e)), ephemeral=False)
         else:
-            await interaction.followup.send(self.bot.i18n.get("error_log_not_found", "Log file not found at: `{path}`", path=log_path), ephemeral=True)
+            await interaction.followup.send(self.bot.i18n.get("error_log_not_found", "Log file not found at: `{path}`", path=log_path), ephemeral=False)
 
-    @app_commands.command(name="manager-logs", description="Get last N lines of the Bot Manager log.")
-    @app_commands.describe(lines="Number of lines (default: 50, all: 0)")
+    @app_commands.command(name="manager-logs", description="[Bot Dev] Get last N lines of the Bot Manager log.")
+    @app_commands.describe(lines="Number of lines")
     @is_admin_context()
-    async def manager_logs(self, interaction: discord.Interaction, lines: int = 50):
+    async def manager_logs(self, interaction: discord.Interaction, lines: int | None = None):
+        if lines is None:
+            lines = self.bot.config.get("bot_settings", {}).get("log_default_lines", 50)
+            
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /manager-logs ({lines} lines)")
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         
         log_path = self.bot.config.get("bot_settings", {}).get("manager_log_file", "manager.log")
         
@@ -169,7 +175,7 @@ class ManagementCog(commands.Cog):
                     
                     content = "".join(last_lines)
                     if not content:
-                        await interaction.followup.send(self.bot.i18n.get("error_manager_log_empty", "Manager log is empty."), ephemeral=True)
+                        await interaction.followup.send(self.bot.i18n.get("error_manager_log_empty", "Manager log is empty."), ephemeral=False)
                         return
 
                     temp_file = "temp_manager_logs.txt"
@@ -178,58 +184,59 @@ class ManagementCog(commands.Cog):
                     
                     file = discord.File(temp_file, filename=f"manager_last_{lines}_lines.txt")
                     header = self.bot.i18n.get("manager_logs_header", "Last {lines} lines of Bot Manager:", lines=lines)
-                    await interaction.followup.send(header, file=file, ephemeral=True)
+                    await interaction.followup.send(header, file=file, ephemeral=False)
                     os.remove(temp_file)
                 else:
                     file = discord.File(log_path, filename="manager_full_logs.txt")
                     header = self.bot.i18n.get("manager_logs_full_header", "Full log of Bot Manager:")
-                    await interaction.followup.send(header, file=file, ephemeral=True)
+                    await interaction.followup.send(header, file=file, ephemeral=False)
             except Exception as e:
-                await interaction.followup.send(self.bot.i18n.get("error_log_fetch", "Error fetching logs: {error}", error=str(e)), ephemeral=True)
+                await interaction.followup.send(self.bot.i18n.get("error_log_fetch", "Error fetching logs: {error}", error=str(e)), ephemeral=False)
         else:
-            await interaction.followup.send(self.bot.i18n.get("error_manager_log_not_found", "Manager log file not found."), ephemeral=True)
+            await interaction.followup.send(self.bot.i18n.get("error_manager_log_not_found", "Manager log file not found."), ephemeral=False)
 
-    @app_commands.command(name="manager-restart", description="[Admin] Immediate restart of Bot Manager.")
+    @app_commands.command(name="manager-restart", description="[Bot Dev] Immediate restart of Bot Manager.")
     @is_admin_context()
     async def manager_restart(self, interaction: discord.Interaction):
         log.info(f"User {interaction.user} requested /manager-restart. Restarting {self.bot.manager_name}...")
         msg = self.bot.i18n.get("manager_restart_msg", "Restarting {name}... ", name=self.bot.manager_name)
-        await interaction.response.send_message(msg, ephemeral=True)
+        await interaction.response.send_message(msg, ephemeral=False)
         
         self.bot.management_service.prepare_manager_restart()
         os.execv(sys.executable, ['python'] + sys.argv)
 
-    @app_commands.command(name="manager-update", description="[Admin] Git pull, pip install and restart Bot Manager.")
+    @app_commands.command(name="manager-update", description="[Bot Dev] Git pull, pip install and restart Bot Manager.")
     @is_admin_context()
     async def manager_update(self, interaction: discord.Interaction):
         log.info(f"User {interaction.user} requested /manager-update for {self.bot.manager_name}.")
-        await interaction.response.defer(ephemeral=True)
+        await interaction.response.defer(ephemeral=False)
         
         try:
             success, output, changed, details = await self.bot.management_service.run_manager_update()
             
             if not success:
                 error_prefix = self.bot.i18n.get("error_git_update_failed", "Git update failed.")
-                await interaction.followup.send(f"{error_prefix}\n{output}", ephemeral=True)
+                msg = self.bot.i18n.get("error_update_output", "{prefix}\n{output}", prefix=error_prefix, output=output)
+                await interaction.followup.send(msg, ephemeral=False)
                 return
 
             if not changed:
                 # No changes found, skip restart
                 update_status = self.bot.i18n.get("update_no_changes", "No updates found, restart skipped.")
-                await interaction.followup.send(update_status, ephemeral=True)
+                await interaction.followup.send(update_status, ephemeral=False)
                 return
 
             # Final response and restart
             if details:
                 from core.views import UpdateResultEmbed
                 title = self.bot.i18n.get("manager_updated_title", "✅ Manager Updated")
-                embed = UpdateResultEmbed(self.bot.i18n, title, details)
-                await interaction.followup.send(embed=embed, ephemeral=True)
+                embed = UpdateResultEmbed(self.bot.i18n, title, details, ui_settings=self.bot.ui_settings)
+                await interaction.followup.send(embed=embed, ephemeral=False)
             else:
                 update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting...", name=self.bot.manager_name, output=output)
                 if len(update_status) > 1900:
                     update_status = update_status[:1000] + "\n... [TRUNCATED] ...\n" + update_status[-800:]
-                await interaction.followup.send(update_status, ephemeral=True)
+                await interaction.followup.send(update_status, ephemeral=False)
             
             log.info("Manager updated, restarting process...")
             self.bot.management_service.prepare_manager_restart()
@@ -238,10 +245,11 @@ class ManagementCog(commands.Cog):
             os.execv(sys.executable, ['python'] + sys.argv)
         except Exception as e:
             log.error(f"Manager update failed: {e}")
-            await interaction.followup.send(self.bot.i18n.get("error_update_general", "Error during update: {error}", error=str(e)), ephemeral=True)
+            await interaction.followup.send(self.bot.i18n.get("error_update_general", "Error during update: {error}", error=str(e)), ephemeral=False)
 
     @commands.command(name="sync")
     @commands.guild_only()
+    @is_admin_prefix_context()
     async def sync_prefix(self, ctx: commands.Context, spec: str | None = None):
         """[Admin] Sync slash commands manually (guild/global/copy)."""
         # 1. Always localize GLOBAL commands first (they are the source for copy_global_to)
@@ -268,6 +276,7 @@ class ManagementCog(commands.Cog):
 
     @commands.command(name="clear_commands")
     @commands.guild_only()
+    @is_admin_prefix_context()
     async def clear_commands_prefix(self, ctx: commands.Context):
         """[Admin] Emergency clear of all slash commands."""
         admin_channel_id = getattr(self.bot, 'admin_channel_id', None)
@@ -283,7 +292,7 @@ class ManagementCog(commands.Cog):
         
         await ctx.send(self.bot.i18n.get("clear_commands_success", "All commands cleared."))
 
-    @app_commands.command(name="sync", description="[Admin] Sync slash commands manually.")
+    @app_commands.command(name="sync", description="[Bot Dev] Sync slash commands manually.")
     @app_commands.describe(mode="guild (instant), global (slow), or copy")
     @is_admin_context()
     async def sync_slash(self, interaction: discord.Interaction, mode: str = "guild"):
@@ -308,16 +317,16 @@ class ManagementCog(commands.Cog):
             msg = self.bot.i18n.get("sync_success_guild", "Synced {count} commands to guild.", count=len(synced))
             await interaction.followup.send(msg, ephemeral=True)
 
-    @app_commands.command(name="purge", description="[Admin] Deletes all messages in the current channel.")
+    @app_commands.command(name="purge", description="[Bot Dev] Deletes all messages in the current channel.")
     @is_admin_context()
     async def purge(self, interaction: discord.Interaction):
         """Törli az összes üzenetet a csatornában (csak adminnak a kijelölt csatornán)."""
         await interaction.response.defer(ephemeral=True)
         
         try:
-            # Purge deletes messages (up to 1000 at once for safety)
-            # This requires 'Manage Messages' permission
-            deleted = await interaction.channel.purge(limit=1000)
+            # Purge deletes messages
+            purge_limit = self.bot.config.get("bot_settings", {}).get("purge_limit", 1000)
+            deleted = await interaction.channel.purge(limit=purge_limit)
             
             count = len(deleted)
             msg = self.bot.i18n.get("purge_success", "✅ **{count}** messages deleted.", count=count)

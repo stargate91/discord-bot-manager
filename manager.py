@@ -31,6 +31,13 @@ class BotManager(commands.Bot):
         from core.icons import Icons
         Icons.setup(self.config.get("bot_settings", {}))
         
+        # Apply log configuration from config.json
+        from core.logger import reconfigure_log
+        log_file = bot_settings.get("manager_log_file", "manager.log")
+        max_bytes = bot_settings.get("log_max_bytes", 5*1024*1024)
+        backup_count = bot_settings.get("log_backup_count", 3)
+        reconfigure_log(log_file, max_bytes, backup_count)
+        
         if not self.config:
             log.error(f"CRITICAL: Configuration file not found or empty at {CONFIG_FILE}")
         
@@ -41,6 +48,9 @@ class BotManager(commands.Bot):
         # We start the 'Localization Service' so the bot can speak different languages
         self.language = bot_settings.get("language", "hu")
         self.i18n = LocalizationService(self.language)
+        
+        # We load UI settings for accent colors and timeouts
+        self.ui_settings = self.config.get("ui_settings", {})
         
         # We set up the prefix (like '!') and the 'intents' (permissions)
         self.command_prefix = bot_settings.get("command_prefix", "!")
@@ -59,6 +69,7 @@ class BotManager(commands.Bot):
         # We save the IDs for the server and the admin channel
         self.guild_id = settings.get("guild_id")
         self.admin_channel_id = settings.get("admin_channel_id")
+        self.admin_role_id = settings.get("admin_role_id")
         
         # How often we should check if bots are still running
         self.check_interval = bot_settings.get("check_interval_seconds", 60)
@@ -171,7 +182,8 @@ class BotManager(commands.Bot):
                     await channel.send(msg)
             
             # We clean up the temporary file if it exists
-            restart_info_path = os.path.join("tmp", "manager_restart.json")
+            temp_dir = self.config.get("bot_settings", {}).get("temp_dir", "tmp")
+            restart_info_path = os.path.join(temp_dir, "manager_restart.json")
             if os.path.exists(restart_info_path):
                 os.remove(restart_info_path)
         except Exception as e:
