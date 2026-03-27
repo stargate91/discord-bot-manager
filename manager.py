@@ -47,7 +47,6 @@ class BotManager(commands.Bot):
         settings = self.config.get("settings", {})
         
         # We start the 'Localization Service' so the bot can speak different languages
-vn
         self.language = bot_settings.get("language", "hu")
         self.i18n = LocalizationService(self.language)
         
