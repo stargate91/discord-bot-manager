@@ -160,6 +160,22 @@ class BotManager(commands.Bot):
         self.check_processes.change_interval(seconds=self.check_interval)
         self.check_processes.start()
 
+        # Global error handler for slash commands
+        @self.tree.error
+        async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+            if isinstance(error, app_commands.CheckFailure):
+                # Try to get localized error message
+                msg = self.i18n.get("error_admin_context", "❌ You do not have permission or are in the wrong channel.")
+                if not interaction.response.is_done():
+                    await interaction.response.send_message(msg, ephemeral=True)
+                else:
+                    await interaction.followup.send(msg, ephemeral=True)
+                return
+
+            log.error(f"Slash command error: {error}")
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
+
     async def on_ready(self):
         """This runs when the bot is fully online and ready to go."""
         # We set the bot's activity (what it is 'watching')
@@ -211,6 +227,8 @@ class BotManager(commands.Bot):
             
         if isinstance(error, commands.CheckFailure):
             log.warning(f"Check failed for user {ctx.author} on command {ctx.command}: {error}")
+            msg = self.i18n.get("error_admin_context", "❌ You do not have permission or are in the wrong channel.")
+            await ctx.send(msg)
             return
 
         log.error(f"Error in prefix command {ctx.command}: {error}")

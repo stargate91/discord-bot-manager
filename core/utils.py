@@ -13,9 +13,11 @@ def is_admin_context():
 
         # Check if we are on the right Discord server
         if guild_id and str(interaction.guild_id) != str(guild_id):
+            log.warning(f"Slash Check Failed: Wrong Guild (Expected {guild_id}, got {interaction.guild_id})")
             return False
         # Check if we are in the right channel (the admin channel)
         if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
+            log.warning(f"Slash Check Failed: Wrong Channel (Expected {admin_channel_id}, got {interaction.channel_id})")
             return False
             
         # Check if the user is an administrator OR has the specific admin role
@@ -27,6 +29,7 @@ def is_admin_context():
             has_admin_role = any(str(role.id) == str(admin_role_id) for role in interaction.user.roles)
             
         if not (is_admin_perm or has_admin_role):
+            log.warning(f"Slash Check Failed: No Permission for user {interaction.user} (Role ID: {admin_role_id})")
             return False
             
         # If everything is correct, we return True

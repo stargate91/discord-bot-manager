@@ -39,6 +39,7 @@
     "error_update_failed_output": "❌ Update failed:\n{output}",
     "error_update_output": "{prefix}\n{output}",
     "error_admin_only": "❌ Administrator permissions or the designated admin role required.",
+    "error_admin_context": "❌ You do not have permission or are in the wrong channel.",
     "error_admin_channel_only": "❌ This can only be used in the admin channel.",
     "status_running": "🟢 Running",
     "status_uncertain": "🟡 Status Uncertain (Access Denied)",

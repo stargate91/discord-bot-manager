@@ -39,6 +39,7 @@
     "error_update_failed_output": "❌ Frissítés sikertelen:\n{output}",
     "error_update_output": "{prefix}\n{output}",
     "error_admin_only": "❌ Adminisztrátori jog vagy a kijelölt adminisztrátori rang szükséges.",
+    "error_admin_context": "❌ Nincs jogosultságod a parancs futtatásához, vagy nem a kijelölt admin csatornában vagy.",
     "error_admin_channel_only": "❌ Ezt csak az admin csatornán lehet használni.",
     "status_running": "🟢 Fut",
     "status_uncertain": "🟡 Állapot bizonytalan (Access Denied)",
