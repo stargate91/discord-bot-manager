@@ -307,9 +307,25 @@ class ManagementCog(commands.Cog):
             msg = self.bot.i18n.get("sync_success_copy", "Synced {count} commands to guild.", count=len(synced))
             await interaction.followup.send(msg, ephemeral=True)
         else:
-            synced = await self.bot.tree.sync(guild=interaction.guild)
             msg = self.bot.i18n.get("sync_success_guild", "Synced {count} commands to guild.", count=len(synced))
             await interaction.followup.send(msg, ephemeral=True)
+
+    @app_commands.command(name="test-emojis", description="Debug: test if bot can see custom emojis.")
+    @is_admin_context()
+    async def test_emojis(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        from core.icons import Icons
+        
+        results = []
+        for name, emoji_obj in [("Restart", Icons.RESTART), ("Update", Icons.UPDATE), ("Stop", Icons.STOP)]:
+            resolved = "N/A"
+            if emoji_obj and emoji_obj.id:
+                bot_emoji = self.bot.get_emoji(emoji_obj.id)
+                resolved = f"Found: {bot_emoji.name}" if bot_emoji else "NOT FOUND in bot cache"
+            
+            results.append(f"• **{name}**: {emoji_obj} | {resolved}")
+        
+        await interaction.followup.send("\n".join(results), ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(ManagementCog(bot))
