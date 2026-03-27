@@ -23,22 +23,9 @@ CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
 # This is our main 'Bot Manager' - it's like a boss that controls other bots
 class BotManager(commands.Bot):
     def __init__(self):
-        # First, we load the configuration from the config.json file
-        log.info(f"Loading configuration from: {CONFIG_FILE}")
+        # Move log configuration to the very top to catch early issues
         self.config = self.load_json(CONFIG_FILE)
-        
-        # Initialize UI Icons
-        from core.icons import Icons
-        Icons.setup(self.config.get("bot_settings", {}))
-        
-        if not self.config:
-            log.error(f"CRITICAL: Configuration file not found or empty at {CONFIG_FILE}")
-        
-        # We separate the settings into smaller groups for easier access
-        settings = self.config.get("settings", {})
         bot_settings = self.config.get("bot_settings", {})
-        
-        # Apply log configuration from config.json
         from core.logger import reconfigure_log, setup_discord_logging
         log_file = bot_settings.get("manager_log_file", "manager.log")
         max_bytes = bot_settings.get("log_max_bytes", 5*1024*1024)
@@ -46,7 +33,21 @@ class BotManager(commands.Bot):
         reconfigure_log(log_file, max_bytes, backup_count)
         setup_discord_logging(log_file, max_bytes, backup_count)
         
+        # First, we load the configuration from the config.json file
+        log.info(f"Loading configuration from: {CONFIG_FILE}")
+        
+        # Initialize UI Icons
+        from core.icons import Icons
+        Icons.setup(bot_settings)
+        
+        if not self.config:
+            log.error(f"CRITICAL: Configuration file not found or empty at {CONFIG_FILE}")
+        
+        # We separate the settings into smaller groups for easier access
+        settings = self.config.get("settings", {})
+        
         # We start the 'Localization Service' so the bot can speak different languages
+vn
         self.language = bot_settings.get("language", "hu")
         self.i18n = LocalizationService(self.language)
         
@@ -179,6 +180,16 @@ class BotManager(commands.Bot):
             log.error(f"Slash command error: {error}")
             if not interaction.response.is_done():
                 await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
+
+    async def on_connect(self):
+        """Dispatched when the bot has connected to Discord."""
+        log.info("Manager connected to Discord (Gateway). Waiting for cache/ready...")
+
+    async def on_shard_connect(self, shard_id):
+        log.info(f"Shard {shard_id} connected to Gateway.")
+
+    async def on_shard_ready(self, shard_id):
+        log.info(f"Shard {shard_id} is ready.")
 
     async def on_ready(self):
         """This runs when the bot is fully online and ready to go."""

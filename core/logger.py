@@ -50,7 +50,7 @@ def reconfigure_log(log_file, max_bytes, backup_count):
 def setup_discord_logging(log_file, max_bytes, backup_count):
     """Sets up the 'discord' logger to write to the same file."""
     logger = logging.getLogger("discord")
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG) # Set to DEBUG for deep investigation
     
     # Remove old handlers
     for handler in logger.handlers[:]:
