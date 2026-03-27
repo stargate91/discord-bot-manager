@@ -1,5 +1,6 @@
 import discord
 from discord import app_commands
+from discord.ext import commands
 import os
 
 # This is a 'decorator' - it's a special function that checks something before running a command!
