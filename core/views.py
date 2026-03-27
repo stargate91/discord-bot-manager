@@ -11,27 +11,25 @@ class Icons:
     
     @classmethod
     def setup(cls, config):
-        bot_settings = config.get("bot_settings", {})
-        emoji_cfg = bot_settings.get("emojis", {})
+        """Initializes all icons from config or defaults."""
+        # Exact logic from music bot, adapted for dict support if needed
+        if hasattr(config, "emojis"):
+            icons_data = config.emojis
+        elif isinstance(config, dict):
+            icons_data = config.get("emojis", {})
+        else:
+            icons_data = {}
         
         def get(name, default):
-            val = emoji_cfg.get(name)
-            if not val:
-                log.debug(f"[Icons] Emoji '{name}' not found in config, using default: {default}")
-                return discord.PartialEmoji.from_str(default) if ":" in str(default) else discord.PartialEmoji(name=default)
-            
-            try:
-                pe = discord.PartialEmoji.from_str(val)
-                log.debug(f"[Icons] Loaded emoji '{name}': {pe}")
-                return pe
-            except Exception as e:
-                log.error(f"[Icons] Failed to parse emoji '{name}' ({val}): {e}")
-                return discord.PartialEmoji(name=default) if ":" not in str(default) else discord.PartialEmoji.from_str(default)
+            return discord.PartialEmoji.from_str(icons_data.get(name, default))
 
         cls.RESTART = get("restart", "🔄")
         cls.UPDATE = get("update", "🆙")
         cls.STOP = get("stop", "⏹️")
-        log.info(f"UI Icons initialized. Restart: {cls.RESTART}, Update: {cls.UPDATE}, Stop: {cls.STOP}")
+
+# Default initialization
+class DefaultConfig: emojis = {}
+Icons.setup({"emojis": {}})
 
 class BotControlButton(discord.ui.Button):
     def __init__(self, style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):

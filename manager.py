@@ -29,7 +29,7 @@ class BotManager(commands.Bot):
         
         # Initialize UI Icons
         from core.views import Icons
-        Icons.setup(self.config)
+        Icons.setup(self.config.get("bot_settings", {}))
         
         if not self.config:
             log.error(f"CRITICAL: Configuration file not found or empty at {CONFIG_FILE}")
