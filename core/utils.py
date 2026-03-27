@@ -17,6 +17,11 @@ def is_admin_context():
         # Check if we are in the right channel (the admin channel)
         if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
             return False
+            
+        # Check if the user is an administrator
+        if not interaction.user.guild_permissions.administrator:
+            return False
+            
         # If everything is correct, we return True
         return True
     return app_commands.check(predicate)

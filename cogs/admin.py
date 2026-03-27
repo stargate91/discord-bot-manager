@@ -205,9 +205,6 @@ class ManagementCog(commands.Cog):
         log.info(f"User {interaction.user} requested /manager-update for {self.bot.manager_name}.")
         await interaction.response.defer(ephemeral=True)
         
-        manager_path = os.getcwd() # Manager works from its own CWD
-        results = []
-        
         try:
             success, output, changed, details = await self.bot.management_service.run_manager_update()
             
@@ -306,7 +303,33 @@ class ManagementCog(commands.Cog):
             msg = self.bot.i18n.get("sync_success_copy", "Synced {count} commands to guild.", count=len(synced))
             await interaction.followup.send(msg, ephemeral=True)
         else:
+            # Sync only to this guild (immediate)
+            synced = await self.bot.tree.sync(guild=interaction.guild)
             msg = self.bot.i18n.get("sync_success_guild", "Synced {count} commands to guild.", count=len(synced))
+            await interaction.followup.send(msg, ephemeral=True)
+
+    @app_commands.command(name="purge", description="[Admin] Deletes all messages in the current channel.")
+    @is_admin_context()
+    async def purge(self, interaction: discord.Interaction):
+        """Törli az összes üzenetet a csatornában (csak adminnak a kijelölt csatornán)."""
+        await interaction.response.defer(ephemeral=True)
+        
+        try:
+            # Purge deletes messages (up to 1000 at once for safety)
+            # This requires 'Manage Messages' permission
+            deleted = await interaction.channel.purge(limit=1000)
+            
+            count = len(deleted)
+            msg = self.bot.i18n.get("purge_success", "✅ **{count}** messages deleted.", count=count)
+            await interaction.followup.send(msg, ephemeral=True)
+            log.info(f"User {interaction.user} purged {count} messages in channel {interaction.channel.name}")
+            
+        except discord.Forbidden:
+            msg = self.bot.i18n.get("purge_error", "❌ Error: Missing permissions.", error="Forbidden")
+            await interaction.followup.send(msg, ephemeral=True)
+        except Exception as e:
+            log.error(f"Error during purge: {e}")
+            msg = self.bot.i18n.get("purge_error", "❌ Error during purge: {error}", error=str(e))
             await interaction.followup.send(msg, ephemeral=True)
 
 async def setup(bot):

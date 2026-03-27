@@ -83,5 +83,9 @@
     "manager_updated_title": "✅ Manager Updated",
     "update_result_title": "✅ {name} updated",
     "status_restarting": "Manager is restarting... 🔄",
-    "status_stopping": "Manager is shutting down... ⏹️"
+    "status_stopping": "Manager is shutting down... ⏹️",
+    "desc_purge": "[Admin] Deletes all messages in the current channel.",
+    "purge_confirm": "Are you sure you want to delete ALL messages in this channel?",
+    "purge_success": "✅ **{count}** messages deleted.",
+    "purge_error": "❌ Error during purge: {error}"
 }

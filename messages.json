@@ -83,5 +83,9 @@
     "manager_updated_title": "✅ Manager Frissítve",
     "update_result_title": "✅ {name} frissítve",
     "status_restarting": "A Manager újraindul... 🔄",
-    "status_stopping": "A Manager leáll... ⏹️"
+    "status_stopping": "A Manager leáll... ⏹️",
+    "desc_purge": "[Admin] Törli az összes üzenetet ebben a csatornában.",
+    "purge_confirm": "Biztosan törölni szeretnéd az ÖSSZES üzenetet ebben a csatornában?",
+    "purge_success": "✅ **{count}** üzenet törölve.",
+    "purge_error": "❌ Hiba a törlés során: {error}"
 }
