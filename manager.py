@@ -60,7 +60,7 @@ class BotManager(commands.Bot):
         self.command_prefix = bot_settings.get("command_prefix", "!")
         self.command_suffix = bot_settings.get("command_suffix", "")
         intents = discord.Intents.default()
-        intents.members = False # Temporarily disabled to test for gateway handshake hang
+        intents.members = True # Restored to True as in commit 16a2529
         intents.message_content = True
         
         # We call the 'super' init to finish setting up the Discord bot
@@ -189,10 +189,10 @@ class BotManager(commands.Bot):
 
     async def on_connect(self):
         """Dispatched when the bot has connected to Discord."""
-        log.info("Manager connected to Discord (Gateway). Waiting for cache/ready...")
+        log.info("[DEBUG] on_connect called. Manager connected to Discord (Gateway). Waiting for cache/ready...")
 
     async def on_shard_connect(self, shard_id):
-        log.info(f"Shard {shard_id} connected to Gateway.")
+        log.info(f"[DEBUG] on_shard_connect called. Shard {shard_id} connected to Gateway.")
 
     async def on_shard_ready(self, shard_id):
         log.info(f"Shard {shard_id} is ready.")
