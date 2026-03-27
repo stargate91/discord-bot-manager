@@ -156,9 +156,12 @@ class BotManager(commands.Bot):
         
         # We check if any bots are already running on the computer
         self.process_manager.discover_processes()
+        
+        log.info("Starting background check loop...")
         # We start the background loop to keep checking them
         self.check_processes.change_interval(seconds=self.check_interval)
         self.check_processes.start()
+        log.info("Background loop started. Waiting for Discord ready event...")
 
         # Global error handler for slash commands
         @self.tree.error
@@ -178,6 +181,7 @@ class BotManager(commands.Bot):
 
     async def on_ready(self):
         """This runs when the bot is fully online and ready to go."""
+        log.info(f"on_ready event received. Logged in as: {self.user}")
         # We set the bot's activity (what it is 'watching')
         count = len(self.bots)
         activity_msg = self.i18n.get("activity_text", "Watching {count} bots...", count=count)
@@ -197,7 +201,7 @@ class BotManager(commands.Bot):
                     msg = self.i18n.get("manager_online_log", "Manager {name} is back online.", name=self.manager_name)
                     await channel.send(msg)
             
-            # We 2026-03-27 18:59:09,915 - BotManager - INFO - [Message] From climaxim in #bot-fejlesztés🤖: !clear_commands_bup the temporary file if it exists
+            # We clean up the temporary file if it exists
             temp_dir = self.config.get("bot_settings", {}).get("temp_dir", "tmp")
             restart_info_path = os.path.join(temp_dir, "manager_restart.json")
             if os.path.exists(restart_info_path):
