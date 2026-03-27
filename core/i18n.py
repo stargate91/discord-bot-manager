@@ -9,7 +9,9 @@ class LocalizationService:
         self.current_lang = default_lang
         self.translations = {}
         # We load the default language when we start
+        log.info(f"[DEBUG] LocalizationService: Initializing for {default_lang}")
         self.load_translations(default_lang)
+        log.info(f"[DEBUG] LocalizationService: Initialization for {default_lang} complete.")
 
     def load_translations(self, lang):
         """This function loads the right language file (messages.json or messages_en.json)."""
@@ -17,11 +19,15 @@ class LocalizationService:
         # Hungarian is special, it uses the main messages.json file
         file_name = "messages.json" if lang == "hu" else f"messages_{lang}.json"
         
+        log.info(f"[DEBUG] LocalizationService: Checking existence of {file_name}...")
         if os.path.exists(file_name):
+            log.info(f"[DEBUG] LocalizationService: {file_name} exists. Opening...")
             try:
                 with open(file_name, "r", encoding="utf-8") as f:
+                    log.info(f"[DEBUG] LocalizationService: {file_name} opened. Loading JSON...")
                     # We load the JSON data and update our dictionary
                     new_data = json.load(f)
+                    log.info(f"[DEBUG] LocalizationService: JSON loaded from {file_name}.")
                     self.translations.clear()
                     self.translations.update(new_data)
                 log.info(f"Loaded {len(self.translations)} translation keys for language: {lang}")

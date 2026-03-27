@@ -39,6 +39,7 @@ class BotManager(commands.Bot):
         # Initialize UI Icons
         from core.icons import Icons
         Icons.setup(bot_settings)
+        log.info("[DEBUG] Icons setup complete.")
         
         if not self.config:
             log.error(f"CRITICAL: Configuration file not found or empty at {CONFIG_FILE}")
@@ -48,7 +49,9 @@ class BotManager(commands.Bot):
         
         # We start the 'Localization Service' so the bot can speak different languages
         self.language = bot_settings.get("language", "hu")
+        log.info(f"[DEBUG] Initializing LocalizationService for language: {self.language}")
         self.i18n = LocalizationService(self.language)
+        log.info("[DEBUG] LocalizationService initialized.")
         
         # We load UI settings for accent colors and timeouts
         self.ui_settings = self.config.get("ui_settings", {})
@@ -61,7 +64,9 @@ class BotManager(commands.Bot):
         intents.message_content = True
         
         # We call the 'super' init to finish setting up the Discord bot
+        log.info("[DEBUG] Calling super().__init__")
         super().__init__(command_prefix=self.command_prefix, intents=intents)
+        log.info("[DEBUG] super().__init__ complete.")
         
         # We initialize our helper services (ProcessManager and GitService)
         self.process_manager = ProcessManager(self.config, self.i18n.translations)
@@ -132,11 +137,13 @@ class BotManager(commands.Bot):
         cogs_dir = os.path.join(base_dir, "cogs")
         
         if os.path.exists(cogs_dir):
+            log.info(f"[DEBUG] Loading extensions from {cogs_dir}...")
             for filename in os.listdir(cogs_dir):
                 # We skip files that are not python scripts or are hidden
                 if filename.endswith(".py") and not filename.startswith("__"):
                     try:
                         # We load the extension (e.g., 'cogs.admin')
+                        log.info(f"[DEBUG] Loading extension: {filename}...")
                         await self.load_extension(f"cogs.{filename[:-3]}")
                         log.info(f"Loaded extension: {filename}")
                     except Exception as e:
