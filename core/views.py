@@ -168,7 +168,7 @@ class StatusContainer(Container):
         else:
             self.add_item(TextDisplay(f"*{i18n.get('error_no_bots_configured', 'No bots configured.')}*"))
 
-class ModernStatusLayout(LayoutView):
+class ModernStatusView(LayoutView):
     """A premium, modern status view for managed bots using Components V2 layout."""
     def __init__(self, bot_manager, i18n, manager_stats, bots_stats):
         super().__init__(timeout=300)
