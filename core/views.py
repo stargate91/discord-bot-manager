@@ -12,21 +12,11 @@ class Icons:
     @classmethod
     def setup(cls, config):
         bot_settings = config.get("bot_settings", {})
-        emoji_cfg = bot_settings.get("emojis", {})
+        icons_data = bot_settings.get("emojis", {})
         
         def get(name, default):
-            val = emoji_cfg.get(name)
-            if not val:
-                log.debug(f"[Icons] Emoji '{name}' not found in config, using default: {default}")
-                return discord.PartialEmoji.from_str(default) if ":" in str(default) else discord.PartialEmoji(name=default)
-            
-            try:
-                pe = discord.PartialEmoji.from_str(val)
-                log.debug(f"[Icons] Loaded emoji '{name}': {pe}")
-                return pe
-            except Exception as e:
-                log.error(f"[Icons] Failed to parse emoji '{name}' ({val}): {e}")
-                return discord.PartialEmoji(name=default) if ":" not in str(default) else discord.PartialEmoji.from_str(default)
+            # We match the dc_radio_bot get helper exactly
+            return discord.PartialEmoji.from_str(icons_data.get(name, default))
 
         cls.RESTART = get("restart", "🔄")
         cls.UPDATE = get("update", "🆙")
