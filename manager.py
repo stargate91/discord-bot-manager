@@ -27,6 +27,10 @@ class BotManager(commands.Bot):
         log.info(f"Loading configuration from: {CONFIG_FILE}")
         self.config = self.load_json(CONFIG_FILE)
         
+        # Initialize UI Icons
+        from core.views import Icons
+        Icons.setup(self.config)
+        
         if not self.config:
             log.error(f"CRITICAL: Configuration file not found or empty at {CONFIG_FILE}")
         
