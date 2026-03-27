@@ -7,16 +7,27 @@ class Icons:
     
     @classmethod
     async def setup_async(cls, bot: discord.Client):
-        """Asynchronously fetches application emojis to ensure they are in cache."""
+        """Asynchronously fetches application emojis to ensure they are in cache and mapped."""
         from core.logger import log
         try:
             # Application emojis are available via fetch_application_emojis
             app_emojis = await bot.fetch_application_emojis()
             log.info(f"[Icons] Fetched {len(app_emojis)} application emojis.")
-            # We don't need to do anything else, they are now in the bot's internal cache
-            # and PartialEmoji with these IDs will work better.
+            
+            # Map them by name if they are in our expected set
+            for e in app_emojis:
+                if e.name == "rotatecw":
+                    cls.RESTART = e
+                    log.info(f"[Icons]   Mapped {e.name} as RESTART icon (Full Emoji)")
+                elif e.name == "refreshcw":
+                    cls.UPDATE = e
+                    log.info(f"[Icons]   Mapped {e.name} as UPDATE icon (Full Emoji)")
+                elif e.name == "power":
+                    cls.STOP = e
+                    log.info(f"[Icons]   Mapped {e.name} as STOP icon (Full Emoji)")
+                    
         except Exception as e:
-            log.error(f"[Icons] Failed to fetch application emojis: {e}")
+            log.error(f"[Icons] Failed to fetch/map application emojis: {e}")
 
     @classmethod
     def setup(cls, config):

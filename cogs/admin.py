@@ -333,7 +333,8 @@ class ManagementCog(commands.Cog):
                 else:
                     resolved = "NOT FOUND in any cache"
             
-            results.append(f"• **{name}**: {emoji_obj} | {resolved}")
+            emoji_type = type(emoji_obj).__name__
+            results.append(f"• **{name}**: {emoji_obj} | {resolved} ({emoji_type})")
         
         await interaction.followup.send("\n".join(results), ephemeral=True)
 
