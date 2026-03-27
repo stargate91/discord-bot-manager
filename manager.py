@@ -181,7 +181,7 @@ class BotManager(commands.Bot):
                     msg = self.i18n.get("manager_online_log", "Manager {name} is back online.", name=self.manager_name)
                     await channel.send(msg)
             
-            # We clean up the temporary file if it exists
+            # We 2026-03-27 18:59:09,915 - BotManager - INFO - [Message] From climaxim in #bot-fejlesztés🤖: !clear_commands_bup the temporary file if it exists
             temp_dir = self.config.get("bot_settings", {}).get("temp_dir", "tmp")
             restart_info_path = os.path.join(temp_dir, "manager_restart.json")
             if os.path.exists(restart_info_path):
@@ -201,8 +201,19 @@ class BotManager(commands.Bot):
         if message.author.bot:
             return
             
-        log.info(f"[Message] From {message.author} in #{message.channel}: {message.content}")
+        log.info(f"[Message] From {message.author} in #{message.channel} (ID: {message.channel.id}): {message.content}")
         await self.process_commands(message)
+
+    async def on_command_error(self, ctx, error):
+        """Global error handler for prefix commands."""
+        if isinstance(error, commands.CommandNotFound):
+            return # Ignore unknown commands
+            
+        if isinstance(error, commands.CheckFailure):
+            log.warning(f"Check failed for user {ctx.author} on command {ctx.command}: {error}")
+            return
+
+        log.error(f"Error in prefix command {ctx.command}: {error}")
 
     @tasks.loop(seconds=60)
     async def check_processes(self):

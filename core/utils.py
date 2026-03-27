@@ -41,14 +41,20 @@ def is_admin_prefix_context():
         admin_channel_id = getattr(bot, 'admin_channel_id', None)
 
         if guild_id and str(ctx.guild.id) != str(guild_id):
+            log.warning(f"Prefix Check Failed: Wrong Guild (Expected {guild_id}, got {ctx.guild.id})")
             return False
         if admin_channel_id and str(ctx.channel.id) != str(admin_channel_id):
+            log.warning(f"Prefix Check Failed: Wrong Channel (Expected {admin_channel_id}, got {ctx.channel.id})")
             return False
             
         is_admin_perm = ctx.author.guild_permissions.administrator
         admin_role_id = getattr(bot, 'admin_role_id', None)
         has_admin_role = any(str(role.id) == str(admin_role_id) for role in ctx.author.roles) if admin_role_id else False
         
-        return is_admin_perm or has_admin_role
+        if not (is_admin_perm or has_admin_role):
+            log.warning(f"Prefix Check Failed: No Permission for user {ctx.author} (Role ID: {admin_role_id})")
+            return False
+
+        return True
         
     return commands.check(predicate)
