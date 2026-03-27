@@ -312,17 +312,15 @@ class ManagementCog(commands.Cog):
     @app_commands.command(name="test-emojis", description="Debug: test if bot can see custom emojis.")
     @is_admin_context()
     async def test_emojis(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-        from core.icons import Icons
-        
         # Fetch application emojis to check them too
         try:
             app_emojis = {e.id: e for e in (await self.bot.fetch_application_emojis())}
         except:
             app_emojis = {}
         
-        # We need the original message to add reactions to it
-        msg = await interaction.original_response()
+        # NOTE: Reactions don't work on Ephemeral messages
+        # So we send a standard response for this test
+        msg = await interaction.followup.send("Testing emojis... (Reaction test starting)", ephemeral=False)
         
         results = []
         for name, emoji_obj in [("Restart", Icons.RESTART), ("Update", Icons.UPDATE), ("Stop", Icons.STOP)]:
@@ -347,7 +345,7 @@ class ManagementCog(commands.Cog):
             emoji_type = type(emoji_obj).__name__
             results.append(f"• **{name}**: {emoji_obj} | {resolved} ({emoji_type}) | {reaction_test}")
         
-        await interaction.followup.send("\n".join(results), ephemeral=True)
+        await msg.edit(content="\n".join(results))
 
 async def setup(bot):
     await bot.add_cog(ManagementCog(bot))
