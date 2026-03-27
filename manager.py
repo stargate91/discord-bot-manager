@@ -139,6 +139,10 @@ class BotManager(commands.Bot):
         # Instead, we now use the manual '!sync' or '/sync' commands in the admin channel.
         log.info(f"Extensions loaded. Use {self.command_prefix}sync to propagate slash commands to Discord.")
         
+        # Setup icons asynchronously (fetch application emojis)
+        from core.icons import Icons
+        await Icons.setup_async(self)
+        
         # We check if any bots are already running on the computer
         self.process_manager.discover_processes()
         # We start the background loop to keep checking them

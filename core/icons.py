@@ -6,6 +6,19 @@ class Icons:
     STOP: discord.PartialEmoji = None
     
     @classmethod
+    async def setup_async(cls, bot: discord.Client):
+        """Asynchronously fetches application emojis to ensure they are in cache."""
+        from core.logger import log
+        try:
+            # Application emojis are available via fetch_application_emojis
+            app_emojis = await bot.fetch_application_emojis()
+            log.info(f"[Icons] Fetched {len(app_emojis)} application emojis.")
+            # We don't need to do anything else, they are now in the bot's internal cache
+            # and PartialEmoji with these IDs will work better.
+        except Exception as e:
+            log.error(f"[Icons] Failed to fetch application emojis: {e}")
+
+    @classmethod
     def setup(cls, config):
         """Initializes all icons from config or defaults."""
         from core.logger import log

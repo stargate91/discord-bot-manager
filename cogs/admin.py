@@ -315,12 +315,23 @@ class ManagementCog(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         from core.icons import Icons
         
+        # Fetch application emojis to check them too
+        try:
+            app_emojis = {e.id: e for e in (await self.bot.fetch_application_emojis())}
+        except:
+            app_emojis = {}
+        
         results = []
         for name, emoji_obj in [("Restart", Icons.RESTART), ("Update", Icons.UPDATE), ("Stop", Icons.STOP)]:
             resolved = "N/A"
             if emoji_obj and emoji_obj.id:
                 bot_emoji = self.bot.get_emoji(emoji_obj.id)
-                resolved = f"Found: {bot_emoji.name}" if bot_emoji else "NOT FOUND in bot cache"
+                if bot_emoji:
+                    resolved = f"Found in Guild: {bot_emoji.name}"
+                elif emoji_obj.id in app_emojis:
+                    resolved = f"Found in App Emojis: {app_emojis[emoji_obj.id].name}"
+                else:
+                    resolved = "NOT FOUND in any cache"
             
             results.append(f"• **{name}**: {emoji_obj} | {resolved}")
         
