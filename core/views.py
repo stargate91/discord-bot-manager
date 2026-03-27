@@ -96,10 +96,9 @@ class StatusContainer(Container):
         super().__init__(accent_color=0x2b2d31) # Modern dark accent
         
         # We use the Icons class which was setup in manager.py
-        # We use literal strings for testing if they render better for App Emojis
-        restart_emoji = "<:rotatecw:1487065722562674838>"
-        update_emoji = "<:refreshcw:1487065721090478202>"
-        stop_emoji = "<:power:1487065719353905336>"
+        restart_emoji = Icons.RESTART
+        update_emoji = Icons.UPDATE
+        stop_emoji = Icons.STOP
 
         # 1. Manager Header & Stats
         manager_text = (

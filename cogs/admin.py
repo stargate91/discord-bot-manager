@@ -321,9 +321,13 @@ class ManagementCog(commands.Cog):
         except:
             app_emojis = {}
         
+        # We need the original message to add reactions to it
+        msg = await interaction.original_response()
+        
         results = []
         for name, emoji_obj in [("Restart", Icons.RESTART), ("Update", Icons.UPDATE), ("Stop", Icons.STOP)]:
             resolved = "N/A"
+            reaction_test = "N/A"
             if emoji_obj and emoji_obj.id:
                 bot_emoji = self.bot.get_emoji(emoji_obj.id)
                 if bot_emoji:
@@ -332,9 +336,16 @@ class ManagementCog(commands.Cog):
                     resolved = f"Found in App Emojis: {app_emojis[emoji_obj.id].name}"
                 else:
                     resolved = "NOT FOUND in any cache"
+                
+                # Test reaction
+                try:
+                    await msg.add_reaction(emoji_obj)
+                    reaction_test = "✅ Reaction success"
+                except Exception as e:
+                    reaction_test = f"❌ Reaction failed: {e}"
             
             emoji_type = type(emoji_obj).__name__
-            results.append(f"• **{name}**: {emoji_obj} | {resolved} ({emoji_type})")
+            results.append(f"• **{name}**: {emoji_obj} | {resolved} ({emoji_type}) | {reaction_test}")
         
         await interaction.followup.send("\n".join(results), ephemeral=True)
 
