@@ -63,9 +63,9 @@ class Icons:
             log.info(f"[Icons]   {name} -> {pe} (ID: {pe.id})")
             return pe
 
-        cls.RESTART = get("restart", "🔄")
-        cls.UPDATE = get("update", "🆙")
-        cls.STOP = get("stop", "⏹️")
+        cls.RESTART = get("restart", "<:rotatecw:1487065722562674838>")
+        cls.UPDATE = get("update", "<:refreshcw:1487065721090478202>")
+        cls.STOP = get("stop", "<:power:1487065719353905336>")
 
 # Default initialization
 class DefaultConfig: emojis = {}
