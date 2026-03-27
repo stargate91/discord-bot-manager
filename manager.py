@@ -61,6 +61,10 @@ class BotManager(commands.Bot):
         # Which Git branch we should use for updates
         self.git_branch = bot_settings.get("git_branch", "origin/main")
         
+        # Define missing variables needed for bot configuration
+        raw_bots = self.config.get("bots", {})
+        default_log = bot_settings.get("bot_log_default", "bot.log")
+
         self.bots = {bid: BotConfig.from_dict(bid, bdata, default_log) for bid, bdata in raw_bots.items()}
         log.info(f"Initialized manager with {len(self.bots)} bots. Guild ID: {self.guild_id}")
 
