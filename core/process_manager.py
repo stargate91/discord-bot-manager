@@ -67,6 +67,27 @@ class ProcessManager:
                 continue
         return found_count
 
+    def find_all_processes_in_path(self, bot_path):
+        """Scans the entire OS to find any process running from the bot's folder."""
+        found_pids = []
+        target_path = os.path.normpath(bot_path).lower()
+        
+        for proc in psutil.process_iter(['pid', 'name', 'cwd', 'cmdline']):
+            try:
+                cwd = proc.info.get('cwd')
+                if not cwd: continue
+                
+                norm_cwd = os.path.normpath(cwd).lower()
+                # Check if it's running in that folder or a subfolder
+                if norm_cwd.startswith(target_path):
+                    # We also want to verify it’s likely a python process
+                    cmdline = proc.info.get('cmdline')
+                    if cmdline and any('python' in arg.lower() for arg in cmdline):
+                         found_pids.append(proc.info['pid'])
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return found_pids
+
     def is_running(self, bot_id):
         """Check if a bot is currently running."""
         process = self.managed_processes.get(bot_id)
@@ -84,44 +105,40 @@ class ProcessManager:
         if systemd_service and os.name == 'posix':
             # Run blocking systemctl command in a thread
             await asyncio.to_thread(self.stop_service, systemd_service)
-            # We don't return True yet; we fall through to ensure any PID we're tracking is actually dead
         
-        # 2. Safety check: Ensure any PID we are tracking is actually gone
-        process = self.managed_processes.get(bot_id)
-        # If we don't have a tracked process, but it's a systemd bot, try to find it one last time to kill it
-        if (not process or not process.is_running()) and systemd_service and os.name == 'posix':
-            pid = self.get_systemd_pid(systemd_service)
-            if pid:
+        # 2. Rogue cleanup: Kill ANY process still running from that bot's folder
+        bot_path = bot_config.path if bot_config else None
+        if bot_path:
+            rogue_pids = await asyncio.to_thread(self.find_all_processes_in_path, bot_path)
+            for pid in rogue_pids:
                 try:
-                    process = psutil.Process(pid)
+                    p = psutil.Process(pid)
+                    if p.is_running():
+                        log.info(f"Force-killing rogue process {pid} in {bot_path}")
+                        p.kill() # Direct kill for rogues
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    process = None
+                    pass
 
+        # 3. Standard cleanup: the tracked process
+        process = self.managed_processes.get(bot_id)
         if process is not None and process.is_running():
-            log.info(f"Terminating process for {bot_id} (PID: {process.pid})")
-            # Ask the process to stop nicely
+            log.info(f"Terminating tracked process for {bot_id} (PID: {process.pid})")
             process.terminate()
             try:
-                # We wait a little bit to see if it stops by itself
                 for _ in range(int(self.stop_timeout * 10)):
                     if not process.is_running():
                         break
                     await asyncio.sleep(0.1)
-                
-                # If it's still running after the wait, we force it to stop
                 if process.is_running():
                     process.kill()
-                    log.warning(f"Bot {bot_id} did not stop gracefully, killed.")
+                    log.warning(f"Bot {bot_id} killed.")
             except psutil.NoSuchProcess:
                 pass
             
-            # Stop tracking this process
             self.managed_processes.pop(bot_id, None)
-            # Give it a tiny bit of time to fully exit
             await asyncio.sleep(self.restart_wait)
             return True
         
-        # If no process was running, return True if we tried systemd, or if it was already gone
         self.managed_processes.pop(bot_id, None)
         return True
 
@@ -177,13 +194,15 @@ class ProcessManager:
         if systemd_service and os.name == 'posix':
             # 1. First, tell the manager to expect a manual stop (to prevent alerts)
             self.manual_stop.add(bot_id)
-            # 2. Use systemctl restart
+            # 2. Force-clean any existing matching PIDs before starting
+            await self.stop_process(bot_id)
+            # 3. Use systemctl restart
             success = await asyncio.to_thread(self.restart_service, systemd_service)
             if success:
                 # Give it a moment to stabilize
                 await asyncio.sleep(self.restart_wait)
-                # Ensure we track the new PID
-                pid = self.get_systemd_pid(systemd_service)
+                # Ensure we track the new PID (with retries)
+                pid = await self.get_systemd_pid_async(systemd_service)
                 if pid:
                     try:
                         self.managed_processes[bot_id] = psutil.Process(pid)
@@ -242,6 +261,15 @@ class ProcessManager:
         except Exception as e:
             log.error(f"Error checking systemd service {service_name}: {e}")
             return "error"
+
+    async def get_systemd_pid_async(self, service_name, retries=3):
+        """Async version of get_systemd_pid with retries."""
+        for i in range(retries):
+            pid = self.get_systemd_pid(service_name)
+            if pid: return pid
+            if i < retries - 1:
+                await asyncio.sleep(1.0) # Wait for systemd to assign PID
+        return None
 
     def get_systemd_pid(self, service_name):
         """Gets the MainPID of a systemd service."""
