@@ -75,10 +75,21 @@ class ProcessManager:
 
     async def stop_process(self, bot_id):
         """Try to stop a bot nicely, but kill it if it takes too long."""
+        self.manual_stop.add(bot_id)
+        
+        bot_config = self.config.get("bots", {}).get(bot_id)
+        systemd_service = bot_config.get("systemd_service") if bot_config else None
+        
+        if systemd_service and os.name == 'posix':
+            success = self.stop_service(systemd_service)
+            if success:
+                self.managed_processes.pop(bot_id, None)
+                await asyncio.sleep(self.restart_wait)
+                return True
+            return False
+
         process = self.managed_processes.get(bot_id)
         if process is not None and process.is_running():
-            # We add it to manual_stop so it doesn't restart automatically
-            self.manual_stop.add(bot_id)
             # Ask the process to stop nicely
             process.terminate()
             try:
@@ -104,7 +115,17 @@ class ProcessManager:
         return False
 
     def start_process(self, bot_id: str, bot_config, env: dict):
-        """This function starts a new bot process."""
+        """This function starts a new bot process or systemd service."""
+        systemd_service = bot_config.systemd_service if hasattr(bot_config, 'systemd_service') else bot_config.get("systemd_service")
+        
+        if systemd_service and os.name == 'posix':
+            success = self.start_service(systemd_service)
+            if success:
+                # For systemd, we don't return a PID immediately, 
+                # but get_stats will pick it up on next update
+                return "systemd"
+            return None
+
         # If the bot is already running, we don't need to do anything
         if bot_id in self.managed_processes and self.managed_processes[bot_id].is_running():
             log.info(f"Bot {bot_id} is already running.")
@@ -138,9 +159,76 @@ class ProcessManager:
             log.error(f"Failed to start bot {bot_id}: {e}")
             return None
 
+    def start_service(self, service_name):
+        """Starts a systemd service."""
+        try:
+            log.info(f"Starting systemd service: {service_name}")
+            subprocess.run(['sudo', 'systemctl', 'start', service_name], check=True)
+            return True
+        except Exception as e:
+            log.error(f"Failed to start systemd service {service_name}: {e}")
+            return False
+
+    def stop_service(self, service_name):
+        """Stops a systemd service."""
+        try:
+            log.info(f"Stopping systemd service: {service_name}")
+            subprocess.run(['sudo', 'systemctl', 'stop', service_name], check=True)
+            return True
+        except Exception as e:
+            log.error(f"Failed to stop systemd service {service_name}: {e}")
+            return False
+
+    def get_systemd_state(self, service_name):
+        """Checks the status of a systemd service on Linux."""
+        if os.name != 'posix':
+            return "unknown"
+        
+        try:
+            # Check if the service is active
+            result = subprocess.run(
+                ['systemctl', 'is-active', service_name],
+                capture_output=True, text=True, check=False
+            )
+            status = result.stdout.strip()
+            return status # active, inactive, failed, etc.
+        except Exception as e:
+            log.error(f"Error checking systemd service {service_name}: {e}")
+            return "error"
+
+    def get_systemd_pid(self, service_name):
+        """Gets the MainPID of a systemd service."""
+        if os.name != 'posix':
+            return None
+            
+        try:
+            result = subprocess.run(
+                ['systemctl', 'show', '-p', 'MainPID', '--value', service_name],
+                capture_output=True, text=True, check=False
+            )
+            pid_str = result.stdout.strip()
+            if pid_str and pid_str != '0':
+                return int(pid_str)
+        except Exception as e:
+            log.error(f"Error getting PID for systemd service {service_name}: {e}")
+        return None
+
     def get_stats(self, bot_id):
         """Returns CPU, RAM, and Uptime stats for a tracked bot."""
         process = self.managed_processes.get(bot_id)
+        bot_config = self.config.get("bots", {}).get(bot_id)
+        systemd_service = bot_config.get("systemd_service") if bot_config else None
+
+        # If it's a systemd service and not tracked, try to find it
+        if systemd_service and (not process or not process.is_running()):
+            pid = self.get_systemd_pid(systemd_service)
+            if pid:
+                try:
+                    process = psutil.Process(pid)
+                    self.managed_processes[bot_id] = process
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    process = None
+
         if not process or not process.is_running():
             return None
             
@@ -169,12 +257,35 @@ class ProcessManager:
             return None
 
     def fetch_unexpected_stops(self):
-        """This function finds bots that stopped by themselves (crashed)."""
+        """This function finds bots that stopped by themselves (crashed or service failed)."""
         bots = self.config.get("bots", {})
         stopped_bots = []
         
         for bot_id, info in bots.items():
             process = self.managed_processes.get(bot_id)
+            systemd_service = info.get("systemd_service")
+            
+            # If it's a systemd service, we check its official state
+            if systemd_service and os.name == 'posix':
+                state = self.get_systemd_state(systemd_service)
+                # If it's active but we don't have a PID, try to find it
+                if state == "active":
+                    if not process or not process.is_running():
+                        pid = self.get_systemd_pid(systemd_service)
+                        if pid:
+                            try:
+                                process = psutil.Process(pid)
+                                self.managed_processes[bot_id] = process
+                            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                                pass
+                elif state in ["inactive", "failed"]:
+                    # If it's inactive/failed and we didn't stop it ourselves
+                    if bot_id not in self.manual_stop:
+                        stopped_bots.append((bot_id, info))
+                    self.managed_processes.pop(bot_id, None)
+                continue
+
+            # Standard process check
             if process:
                 # If psutil says it's not running anymore...
                 if not process.is_running():

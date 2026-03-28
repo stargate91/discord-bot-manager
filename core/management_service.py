@@ -90,7 +90,7 @@ class ManagementService:
                 await self.process_manager.stop_process(b.id)
 
             # 3. Install dependencies
-            pip_success, pip_msg = await asyncio.to_thread(self.git_service.install_dependencies, bot.path)
+            pip_success, pip_msg = await asyncio.to_thread(self.git_service.install_dependencies, bot.path, bot.cmd)
             results.append(pip_msg)
             
             if details:

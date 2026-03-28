@@ -9,6 +9,7 @@ class BotConfig:
     path: str    # Where the bot files are located on the disk
     cmd: str     # The command we run to start it (like 'python bot.py')
     log: Optional[str] = None # Where the bot saves its logs
+    systemd_service: Optional[str] = None # The name of the systemd service (if any)
     description: Optional[str] = None # A short text about what the bot does
 
     @classmethod
@@ -21,5 +22,6 @@ class BotConfig:
             path=data.get("path", "."),
             cmd=data.get("cmd", ""),
             log=data.get("log", default_log),
+            systemd_service=data.get("systemd_service"),
             description=data.get("description")
         )

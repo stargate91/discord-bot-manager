@@ -14,7 +14,11 @@
         "git_branch": "origin/main",
         "requirements_file": "requirements.txt",
         "rollback_ref": "HEAD@{1}",
-        "protected_env_vars": ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"],
+        "protected_env_vars": [
+            "DISCORD_TOKEN",
+            "GUILD_ID",
+            "ADMIN_CHANNEL_ID"
+        ],
         "temp_dir": "tmp",
         "stop_timeout": 5,
         "restart_wait": 1.0,
@@ -22,6 +26,7 @@
         "bot_log_default": "bot.log",
         "log_max_bytes": 5242880,
         "log_backup_count": 3,
+        "systemd_name": "discord-manager.service",
         "emojis": {
             "restart": "<:arrowclockwise:1487098935787917394>",
             "update": "<:arrowsclockwise:1487098937256181866>",
@@ -37,21 +42,24 @@
     "bots": {
         "1353195232675926017": {
             "name": "CheekyElf",
-            "path": "C:/discord_activity_watcher_bot",
-            "cmd": "python bot.py",
-            "log": "activity_bot.log"
+            "path": "/home/jupi/bots/watcher",
+            "cmd": "/home/jupi/bots_env/bin/python bot.py",
+            "log": "activity_bot.log",
+            "systemd_service": "watcher.service"
         },
         "1473068888055873697": {
             "name": "Ava",
-            "path": "C:/dc_radio_bot",
-            "cmd": "python main.py 1",
-            "log": "data/1_radio.log"
+            "path": "/home/jupi/bots/radio",
+            "cmd": "/home/jupi/bots_env/bin/python main.py 1",
+            "log": "data/1_radio.log",
+            "systemd_service": "radio-ava.service"
         },
         "1483519378841665728": {
             "name": "Zea",
-            "path": "C:/dc_radio_bot",
-            "cmd": "python main.py 2",
-            "log": "data/2_radio.log"
+            "path": "/home/jupi/bots/radio",
+            "cmd": "/home/jupi/bots_env/bin/python main.py 2",
+            "log": "data/2_radio.log",
+            "systemd_service": "radio-zea.service"
         }
     }
 }

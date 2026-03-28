@@ -130,7 +130,7 @@ class GitService:
         except Exception as e:
             return False, str(e), False, None
 
-    def install_dependencies(self, path):
+    def install_dependencies(self, path, bot_cmd=None):
         """This function installs the libraries the bot needs using 'pip'."""
         req_path = os.path.join(path, "requirements.txt")
         # If there is no requirements file, there is nothing to install
@@ -139,10 +139,22 @@ class GitService:
             return True, msg
             
         try:
+            # We determine which python to use for pip install
+            # If bot_cmd starts with a path to a python executable, we use that
+            pip_cmd = [sys.executable, "-m", "pip"]
+            
+            if bot_cmd:
+                parts = bot_cmd.split()
+                if len(parts) > 0:
+                    potential_python = parts[0]
+                    # Check if it looks like a path (has / or \) or is a full path
+                    if "/" in potential_python or "\\" in potential_python or os.path.isabs(potential_python):
+                        pip_cmd = [potential_python, "-m", "pip"]
+            
             # We run 'pip install' just like we would in a terminal
             req_file = self.config.get("bot_settings", {}).get("requirements_file", "requirements.txt")
             output = subprocess.check_output(
-                [sys.executable, "-m", "pip", "install", "-r", req_file],
+                pip_cmd + ["install", "-r", req_file],
                 cwd=path,
                 stderr=subprocess.STDOUT
             ).decode('utf-8')

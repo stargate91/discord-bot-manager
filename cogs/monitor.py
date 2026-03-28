@@ -69,8 +69,15 @@ class MonitoringCog(commands.Cog):
                 else:
                     b_uptime_str = self.bot.i18n.get("uptime_minutes", "{m} minutes ago", m=int(b_uptime_sec / 60))
                 
+                # Check if it's a systemd service to show a different status
+                bot_config = self.bot.config.get("bots", {}).get(bot_id, {})
+                if bot_config.get("systemd_service"):
+                    status_text = self.bot.i18n.get("status_running_systemd", "Running (Systemd)")
+                else:
+                    status_text = self.bot.i18n.get("status_running", "Running")
+
                 bot_entry.update({
-                    "status": self.bot.i18n.get("status_running", "Running"),
+                    "status": status_text,
                     "uptime": b_uptime_str,
                     "pid": stats["pid"],
                     "cpu": stats['cpu'],
@@ -81,11 +88,21 @@ class MonitoringCog(commands.Cog):
                 if bot_id in self.bot.process_manager.manual_stop:
                     bot_entry["status"] = self.bot.i18n.get("status_stopped", "Stopped")
                 else:
-                    # If it's not running but we didn't stop it, something might be wrong
-                    if self.bot.process_manager.managed_processes.get(bot_id):
-                        bot_entry["status"] = self.bot.i18n.get("status_uncertain", "Status Uncertain (Access Denied)")
+                    # Check systemd status for more detail if it's a service
+                    bot_config = self.bot.config.get("bots", {}).get(bot_id, {})
+                    systemd_service = bot_config.get("systemd_service")
+                    if systemd_service and os.name == 'posix':
+                        state = self.bot.process_manager.get_systemd_state(systemd_service)
+                        if state == "failed":
+                            bot_entry["status"] = self.bot.i18n.get("status_failed", "Failed")
+                        else:
+                            bot_entry["status"] = self.bot.i18n.get("status_stopped", "Stopped")
                     else:
-                        bot_entry["status"] = self.bot.i18n.get("status_stopped", "Stopped")
+                        # If it's not running but we didn't stop it, something might be wrong
+                        if self.bot.process_manager.managed_processes.get(bot_id):
+                            bot_entry["status"] = self.bot.i18n.get("status_uncertain", "Status Uncertain (Access Denied)")
+                        else:
+                            bot_entry["status"] = self.bot.i18n.get("status_stopped", "Stopped")
             
             bots_stats[bot_id] = bot_entry
         
