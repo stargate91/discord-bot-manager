@@ -107,7 +107,7 @@ class ProcessManager:
             await asyncio.to_thread(self.stop_service, systemd_service)
         
         # 2. Rogue cleanup: Kill ANY process still running from that bot's folder
-        bot_path = bot_config.path if bot_config else None
+        bot_path = bot_config.get("path") if bot_config else None
         if bot_path:
             rogue_pids = await asyncio.to_thread(self.find_all_processes_in_path, bot_path)
             for pid in rogue_pids:
@@ -189,7 +189,11 @@ class ProcessManager:
 
     async def restart_process(self, bot_id: str, bot_config, env: dict):
         """Unified restart logic: uses systemctl restart for Linux services if available."""
-        systemd_service = bot_config.systemd_service if hasattr(bot_config, 'systemd_service') else bot_config.get("systemd_service")
+        # Handle bot_config being either an object (BotConfig) or a raw dictionary
+        if hasattr(bot_config, 'systemd_service'):
+            systemd_service = bot_config.systemd_service
+        else:
+            systemd_service = bot_config.get("systemd_service")
         
         if systemd_service and os.name == 'posix':
             # 1. First, tell the manager to expect a manual stop (to prevent alerts)
