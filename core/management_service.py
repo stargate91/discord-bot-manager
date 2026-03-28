@@ -35,10 +35,7 @@ class ManagementService:
         results = []
         for b in related_bots:
             try:
-                # 1. Stop the bot
-                await self.process_manager.stop_process(b.id)
-
-                # 2. Prepare environment
+                # 1. Prepare environment
                 bot_env = os.environ.copy()
                 protected_vars = self.config.get("bot_settings", {}).get("protected_env_vars", ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"])
                 for key in protected_vars:
@@ -47,8 +44,8 @@ class ManagementService:
                 bot_env["MANAGED_LOGGING"] = "1"
                 bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
 
-                # 3. Start process
-                new_pid = self.process_manager.start_process(b.id, b, bot_env)
+                # 2. Restart process using unified logic
+                new_pid = await self.process_manager.restart_process(b.id, b, bot_env)
                 
                 success_msg = self.i18n.get("restart_success", "Bot {name} restarted (PID: {pid})", name=b.name, pid=new_pid)
                 results.append(success_msg)
@@ -98,7 +95,7 @@ class ManagementService:
                 err_prefix = self.i18n.get("status_error_prefix", "⚠️ Error:")
                 details["pip_status"] = ok_text if pip_success else f"{err_prefix} {pip_msg[:100]}"
 
-            # 4. Restart all bots
+            # 4. Restart all bots using unified logic
             for b in related_bots:
                 bot_env = os.environ.copy()
                 for key in ["DISCORD_TOKEN", "GUILD_ID", "ADMIN_CHANNEL_ID"]:
@@ -107,7 +104,7 @@ class ManagementService:
                 bot_env["MANAGED_LOGGING"] = "1"
                 bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
 
-                new_pid = self.process_manager.start_process(b.id, b, bot_env)
+                new_pid = await self.process_manager.restart_process(b.id, b, bot_env)
                 restart_msg = self.i18n.get("restart_success", "Bot {name} restarted (PID: {pid})", name=b.name, pid=new_pid)
                 results.append(restart_msg)
                 await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online.", name=b.name, id=b.id))

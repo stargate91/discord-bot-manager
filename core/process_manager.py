@@ -79,17 +79,26 @@ class ProcessManager:
         
         bot_config = self.config.get("bots", {}).get(bot_id)
         systemd_service = bot_config.get("systemd_service") if bot_config else None
-        
-        if systemd_service and os.name == 'posix':
-            success = self.stop_service(systemd_service)
-            if success:
-                self.managed_processes.pop(bot_id, None)
-                await asyncio.sleep(self.restart_wait)
-                return True
-            return False
 
+        # 1. Try systemd if available (only on Linux)
+        if systemd_service and os.name == 'posix':
+            # Run blocking systemctl command in a thread
+            await asyncio.to_thread(self.stop_service, systemd_service)
+            # We don't return True yet; we fall through to ensure any PID we're tracking is actually dead
+        
+        # 2. Safety check: Ensure any PID we are tracking is actually gone
         process = self.managed_processes.get(bot_id)
+        # If we don't have a tracked process, but it's a systemd bot, try to find it one last time to kill it
+        if (not process or not process.is_running()) and systemd_service and os.name == 'posix':
+            pid = self.get_systemd_pid(systemd_service)
+            if pid:
+                try:
+                    process = psutil.Process(pid)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    process = None
+
         if process is not None and process.is_running():
+            log.info(f"Terminating process for {bot_id} (PID: {process.pid})")
             # Ask the process to stop nicely
             process.terminate()
             try:
@@ -104,7 +113,6 @@ class ProcessManager:
                     process.kill()
                     log.warning(f"Bot {bot_id} did not stop gracefully, killed.")
             except psutil.NoSuchProcess:
-                # If the process is already gone, that's fine too
                 pass
             
             # Stop tracking this process
@@ -112,7 +120,10 @@ class ProcessManager:
             # Give it a tiny bit of time to fully exit
             await asyncio.sleep(self.restart_wait)
             return True
-        return False
+        
+        # If no process was running, return True if we tried systemd, or if it was already gone
+        self.managed_processes.pop(bot_id, None)
+        return True
 
     def start_process(self, bot_id: str, bot_config, env: dict):
         """This function starts a new bot process or systemd service."""
@@ -159,6 +170,32 @@ class ProcessManager:
             log.error(f"Failed to start bot {bot_id}: {e}")
             return None
 
+    async def restart_process(self, bot_id: str, bot_config, env: dict):
+        """Unified restart logic: uses systemctl restart for Linux services if available."""
+        systemd_service = bot_config.systemd_service if hasattr(bot_config, 'systemd_service') else bot_config.get("systemd_service")
+        
+        if systemd_service and os.name == 'posix':
+            # 1. First, tell the manager to expect a manual stop (to prevent alerts)
+            self.manual_stop.add(bot_id)
+            # 2. Use systemctl restart
+            success = await asyncio.to_thread(self.restart_service, systemd_service)
+            if success:
+                # Give it a moment to stabilize
+                await asyncio.sleep(self.restart_wait)
+                # Ensure we track the new PID
+                pid = self.get_systemd_pid(systemd_service)
+                if pid:
+                    try:
+                        self.managed_processes[bot_id] = psutil.Process(pid)
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                return "systemd"
+            return None
+
+        # Fallback: stop then start
+        await self.stop_process(bot_id)
+        return self.start_process(bot_id, bot_config, env)
+
     def start_service(self, service_name):
         """Starts a systemd service."""
         try:
@@ -177,6 +214,16 @@ class ProcessManager:
             return True
         except Exception as e:
             log.error(f"Failed to stop systemd service {service_name}: {e}")
+            return False
+
+    def restart_service(self, service_name):
+        """Restarts a systemd service (better for applying updates)."""
+        try:
+            log.info(f"Restarting systemd service: {service_name}")
+            subprocess.run(['sudo', 'systemctl', 'restart', service_name], check=True)
+            return True
+        except Exception as e:
+            log.error(f"Failed to restart systemd service {service_name}: {e}")
             return False
 
     def get_systemd_state(self, service_name):
