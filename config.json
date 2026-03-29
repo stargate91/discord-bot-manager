@@ -60,6 +60,13 @@
             "cmd": "/home/jupi/bots_env/bin/python main.py 2",
             "log": "data/2_radio.log",
             "systemd_service": "radio-zea.service"
+        },
+        "1441871407511240724": {
+            "name": "Botzilla Poker",
+            "path": "/home/jupi/bots/poker",
+            "cmd": "/home/jupi/bots_env/bin/python run.py",
+            "log": "botzilla.log",
+            "systemd_service": "poker.service"
         }
     }
 }
