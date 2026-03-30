@@ -142,7 +142,7 @@ class ManagementService:
                 bot_env["MANAGED_LOGGING"] = "1"
                 bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
 
-                new_pid = self.process_manager.start_process(b.id, b, bot_env)
+                new_pid = await self.process_manager.start_process(b.id, b, bot_env)
                 restart_msg = self.i18n.get("restart_success", "Bot {name} restarted (PID: {pid})", name=b.name, pid=new_pid)
                 results.append(restart_msg)
                 await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online.", name=b.name, id=b.id))

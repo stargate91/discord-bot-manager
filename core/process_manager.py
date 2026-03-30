@@ -142,16 +142,17 @@ class ProcessManager:
         self.managed_processes.pop(bot_id, None)
         return True
 
-    def start_process(self, bot_id: str, bot_config, env: dict):
+    async def start_process(self, bot_id: str, bot_config, env: dict):
         """This function starts a new bot process or systemd service."""
         systemd_service = bot_config.systemd_service if hasattr(bot_config, 'systemd_service') else bot_config.get("systemd_service")
         
         if systemd_service and os.name == 'posix':
             success = self.start_service(systemd_service)
             if success:
-                # For systemd, we don't return a PID immediately, 
-                # but get_stats will pick it up on next update
-                return "systemd"
+                # For systemd, wait a bit for the PID to be assigned
+                await asyncio.sleep(self.restart_wait)
+                pid = await self.get_systemd_pid_async(systemd_service)
+                return pid if pid else "systemd"
             return None
 
         # If the bot is already running, we don't need to do anything
@@ -212,12 +213,12 @@ class ProcessManager:
                         self.managed_processes[bot_id] = psutil.Process(pid)
                     except (psutil.NoSuchProcess, psutil.AccessDenied):
                         pass
-                return "systemd"
+                return pid if pid else "systemd"
             return None
 
         # Fallback: stop then start
         await self.stop_process(bot_id)
-        return self.start_process(bot_id, bot_config, env)
+        return await self.start_process(bot_id, bot_config, env)
 
     def start_service(self, service_name):
         """Starts a systemd service."""
