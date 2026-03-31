@@ -6,14 +6,14 @@ import json
 import psutil
 import datetime
 from core.logger import log
-from core.utils import is_admin_context
+from core.utils import is_admin_context, is_monitor_context
 
 class MonitoringCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @app_commands.command(name="status", description="Shows the status and resource usage of managed bots.")
-    @is_admin_context()
+    @is_monitor_context()
     async def status(self, interaction: discord.Interaction):
         # We start by logging that someone asked for status
         log.info(f"User {interaction.user} (ID: {interaction.user.id}) requested /status")
