@@ -54,8 +54,9 @@ class BotControlButton(discord.ui.Button):
                 log.info(f"User {interaction.user} clicked SELF-RESTART for Manager")
                 service.prepare_manager_restart()
                 await interaction.followup.send(self.parent_view.i18n.get("status_restarting", "Manager restarting..."), ephemeral=False)
-                await asyncio.sleep(1)
-                os.execv(sys.executable, ['python'] + sys.argv)
+                await asyncio.sleep(2)
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+
                 return
             elif self.action == "stop":
                 log.info(f"User {interaction.user} clicked SELF-STOP for Manager")
@@ -77,8 +78,9 @@ class BotControlButton(discord.ui.Button):
                 service.prepare_manager_restart()
                 msg = self.parent_view.i18n.get("manager_update_success", "Manager updated. Restarting...", name="Manager", output=output)
                 await interaction.followup.send(msg, ephemeral=False)
-                await asyncio.sleep(1)
-                os.execv(sys.executable, ['python'] + sys.argv)
+                await asyncio.sleep(2)
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+
                 return
 
         # STANDARD BOT CONTROLS

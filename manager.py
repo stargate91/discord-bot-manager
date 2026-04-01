@@ -214,6 +214,10 @@ class BotManager(commands.Bot):
     async def on_ready(self):
         """This runs when the bot is fully online and ready to go."""
         log.info(f"on_ready event received. Logged in as: {self.user} (ID: {self.user.id if self.user else 'None'})")
+        
+        # We wait a bit to ensure Discord's cache is fully ready
+        await asyncio.sleep(2)
+        
         # We set the bot's activity (what it is 'watching')
         count = len(self.bots)
         log.info(f"Setting presence for {count} bots...")
@@ -226,26 +230,30 @@ class BotManager(commands.Bot):
         await self.change_presence(activity=activity)
         log.info(f"Bot Manager online. Neural-link active. {self.user} ({self.manager_name})")
 
-        # Notify admins that the manager is online (always)
+        # Check if this was a planned restart/update
+        temp_dir = self.config.get("bot_settings", {}).get("temp_dir", "tmp")
+        restart_info_path = os.path.join(temp_dir, "manager_restart.json")
+        is_restart = os.path.exists(restart_info_path)
+
+        # Notify admins that the manager is online
         try:
             if self.admin_channel_id:
-                channel = self.get_channel(int(self.admin_channel_id))
+                channel = self.bot.get_channel(int(self.admin_channel_id))
                 if not channel:
-                    try:
-                        channel = await self.fetch_channel(int(self.admin_channel_id))
-                    except Exception:
-                        pass
+                    channel = await self.bot.fetch_channel(int(self.admin_channel_id))
+                
                 if channel:
-                    msg = self.i18n.get("manager_online_log", "Manager {name} is back online. (PID: {pid})", name=self.manager_name, pid=os.getpid())
+                    # If it was a restart, we could use a slightly different message or just the standard one
+                    msg = self.i18n.get("manager_online_log", "🛡️ **{name}** is back online. (PID: {pid})", name=self.manager_name, pid=os.getpid())
                     await channel.send(msg)
             
-            # We clean up the temporary file if it exists
-            temp_dir = self.config.get("bot_settings", {}).get("temp_dir", "tmp")
-            restart_info_path = os.path.join(temp_dir, "manager_restart.json")
-            if os.path.exists(restart_info_path):
+            # Clean up the restart flag
+            if is_restart:
                 os.remove(restart_info_path)
+                log.info("Manager restart detected and handled. Cleanup complete.")
         except Exception as e:
             log.error(f"Failed to send startup notification: {e}")
+
 
     async def notify_admin(self, msg):
         """This is a helper function to send messages to our admin channel."""

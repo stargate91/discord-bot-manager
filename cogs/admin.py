@@ -203,13 +203,20 @@ class ManagementCog(commands.Cog):
         await interaction.response.send_message(msg, ephemeral=False)
         
         self.bot.management_service.prepare_manager_restart()
-        os.execv(sys.executable, ['python'] + sys.argv)
+        await asyncio.sleep(2) # Give Discord time to finish delivery
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+
 
     @app_commands.command(name="manager-update", description="[Bot Dev] Git pull, pip install and restart Bot Manager.")
     @is_admin_context()
     async def manager_update(self, interaction: discord.Interaction):
         log.info(f"User {interaction.user} requested /manager-update for {self.bot.manager_name}.")
         await interaction.response.defer(ephemeral=False)
+        
+        # Immediate feedback so the user knows it's doing something
+        updating_msg = self.bot.i18n.get("manager_updating", "🔄 {name} update in progress...", name=self.bot.manager_name)
+        await interaction.followup.send(updating_msg, ephemeral=False)
+
         
         try:
             success, output, changed, details = await self.bot.management_service.run_manager_update()
@@ -241,8 +248,9 @@ class ManagementCog(commands.Cog):
             log.info("Manager updated, restarting process...")
             self.bot.management_service.prepare_manager_restart()
             
-            await asyncio.sleep(1) # Wait for message to send
-            os.execv(sys.executable, ['python'] + sys.argv)
+            await asyncio.sleep(2) # Give Discord more time to finish delivery
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+
         except Exception as e:
             log.error(f"Manager update failed: {e}")
             await interaction.followup.send(self.bot.i18n.get("error_update_general", "Error during update: {error}", error=str(e)), ephemeral=False)
