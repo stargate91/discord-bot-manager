@@ -164,21 +164,26 @@ class BotControlButton(discord.ui.Button):
                                 monitor.git_behind_status[bid] = False
                     log.info(f"[Update] Cleared git_behind_status for {self.bot_id} and related bots")
                     
-                    # Immediately refresh the status panel so the UI updates
-                    try:
-                        if monitor.status_channel_id and monitor.status_message_id:
-                            channel = bot.get_channel(int(monitor.status_channel_id))
-                            if not channel:
-                                channel = await bot.fetch_channel(int(monitor.status_channel_id))
-                            if channel:
-                                msg = await channel.fetch_message(int(monitor.status_message_id))
-                                if msg:
-                                    manager_stats, bots_stats = monitor.get_status_data()
-                                    refreshed_view = ModernStatusView(bot, self.parent_view.i18n, manager_stats, bots_stats)
-                                    await msg.edit(view=refreshed_view)
-                                    log.info("[Update] Panel refreshed immediately after update.")
-                    except Exception as e:
-                        log.warning(f"[Update] Failed to refresh panel after update: {e}")
+                    # Schedule a delayed panel refresh so the callback can finish first
+                    # (replacing the view mid-callback causes discord.py to break subsequent interactions)
+                    async def _delayed_panel_refresh(monitor_ref, bot_ref, i18n_ref):
+                        await asyncio.sleep(3)
+                        try:
+                            if monitor_ref.status_channel_id and monitor_ref.status_message_id:
+                                ch = bot_ref.get_channel(int(monitor_ref.status_channel_id))
+                                if not ch:
+                                    ch = await bot_ref.fetch_channel(int(monitor_ref.status_channel_id))
+                                if ch:
+                                    panel_msg = await ch.fetch_message(int(monitor_ref.status_message_id))
+                                    if panel_msg:
+                                        ms, bs = monitor_ref.get_status_data()
+                                        new_view = ModernStatusView(bot_ref, i18n_ref, ms, bs)
+                                        await panel_msg.edit(view=new_view)
+                                        log.info("[Update] Panel refreshed after delay.")
+                        except Exception as ex:
+                            log.warning(f"[Update] Delayed panel refresh failed: {ex}")
+                    
+                    bot.loop.create_task(_delayed_panel_refresh(monitor, bot, self.parent_view.i18n))
 
                 title = self.parent_view.i18n.get("update_result_title", "✅ {name} updated", name=self.bot_name)
                 embed = UpdateResultEmbed(self.parent_view.i18n, title, details)
