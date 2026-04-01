@@ -32,7 +32,31 @@
         "emojis": {
             "restart": "<:arrowclockwise:1487098935787917394>",
             "update": "<:arrowsclockwise:1487098937256181866>",
-            "stop": "<:power:1487098947272048811>"
+            "stop": "<:power:1487098947272048811>",
+            "CHART": "📊",
+            "ROCKET": "🚀",
+            "SUCCESS": "✅",
+            "TRASH": "🗑️",
+            "CONTROLLER": "🎮",
+            "STATS": "📈",
+            "COMMUNITY": "🤝",
+            "ERROR": "❌",
+            "WARNING": "⚠️",
+            "TOOLS": "🛠️",
+            "LIGHTNING": "⚡",
+            "COOLDOWN": "⏳",
+            "HELP": "🆘",
+            "ALERT": "🚨",
+            "LOG": "📄",
+            "PACKAGE": "📦",
+            "SHIELD": "🛡️",
+            "ROLLBACK": "⏮️",
+            "DOT_GREEN": "🟢",
+            "DOT_RED": "🔴",
+            "DOT_YELLOW": "🟡",
+            "UP": "⬆️",
+            "DOWN": "⬇️",
+            "CHAIN": "⛓️"
         }
     },
     "ui_settings": {

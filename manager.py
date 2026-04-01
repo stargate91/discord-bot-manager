@@ -15,6 +15,8 @@ from core.git_service import GitService
 from core.models import BotConfig
 from core.i18n import LocalizationService
 from core.management_service import ManagementService
+from core.utils import get_feedback
+from core.icons import Icons
 
 # We load our secrets from the .env file
 load_dotenv()
@@ -129,7 +131,7 @@ class BotManager(commands.Bot):
                 # Use the nickname on the server if it has one
                 return guild.me.display_name
         # Otherwise, just use its username or a default name
-        return self.user.name if self.user else self.i18n.get("default_manager_name", "Bot Manager")
+        return self.user.name if self.user else get_feedback(self.i18n, "default_manager_name")
 
     def load_json(self, file_path):
         """This helper function loads a JSON file and returns a dictionary."""
@@ -197,7 +199,7 @@ class BotManager(commands.Bot):
         async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
             if isinstance(error, app_commands.CheckFailure):
                 # Try to get localized error message
-                msg = self.i18n.get("error_admin_context", "❌ You do not have permission or are in the wrong channel.")
+                msg = get_feedback(self.i18n, "error_admin_context")
                 if not interaction.response.is_done():
                     await interaction.response.send_message(msg, ephemeral=True)
                 else:
@@ -222,13 +224,16 @@ class BotManager(commands.Bot):
         """This runs when the bot is fully online and ready to go."""
         log.info(f"on_ready event received. Logged in as: {self.user} (ID: {self.user.id if self.user else 'None'})")
         
+        # We initialize our Icons with custom emojis from config
+        await Icons.setup_async(self)
+        
         # We wait a bit to ensure Discord's cache is fully ready
         await asyncio.sleep(2)
         
         # We set the bot's activity (what it is 'watching')
         count = len(self.bots)
         log.info(f"Setting presence for {count} bots...")
-        activity_msg = self.i18n.get("activity_text", "Watching {count} bots...", count=count)
+        activity_msg = get_feedback(self.i18n, "activity_text", count=count)
         
         activity = discord.Activity(
             type=discord.ActivityType.watching, 
@@ -244,19 +249,13 @@ class BotManager(commands.Bot):
 
         # Notify admins that the manager is online
         try:
-            if self.admin_channel_id:
-                channel = self.bot.get_channel(int(self.admin_channel_id))
-                if not channel:
-                    channel = await self.bot.fetch_channel(int(self.admin_channel_id))
-                
-                if channel:
-                    # If it was a restart, we could use a slightly different message or just the standard one
-                    msg = self.i18n.get("manager_online_log", "🛡️ **{name}** is back online. (PID: {pid})", name=self.manager_name, pid=os.getpid())
-                    await channel.send(msg)
+            msg = get_feedback(self.i18n, "manager_online_log", name=self.manager_name, pid=os.getpid())
+            await self.notify_admin(msg)
             
             # Clean up the restart flag
             if is_restart:
-                os.remove(restart_info_path)
+                if os.path.exists(restart_info_path):
+                    os.remove(restart_info_path)
                 log.info("Manager restart detected and handled. Cleanup complete.")
         except Exception as e:
             log.error(f"Failed to send startup notification: {e}")
@@ -266,6 +265,11 @@ class BotManager(commands.Bot):
         """This is a helper function to send messages to our admin channel."""
         if self.admin_channel_id:
             channel = self.get_channel(int(self.admin_channel_id))
+            if not channel:
+                try:
+                    channel = await self.fetch_channel(int(self.admin_channel_id))
+                except:
+                    pass
             if channel:
                 await channel.send(msg)
 
@@ -284,7 +288,7 @@ class BotManager(commands.Bot):
             
         if isinstance(error, commands.CheckFailure):
             log.warning(f"Check failed for user {ctx.author} on command {ctx.command}: {error}")
-            msg = self.i18n.get("error_admin_context", "❌ You do not have permission or are in the wrong channel.")
+            msg = get_feedback(self.i18n, "error_admin_context")
             await ctx.send(msg)
             return
 
@@ -295,17 +299,15 @@ class BotManager(commands.Bot):
         """This runs every minute to make sure all our bots are still running."""
         log.info("Manager Heartbeat: Checking processes...")
         stopped_bots = self.process_manager.fetch_unexpected_stops()
+        
         for bot_id, _ in stopped_bots:
-            bot = self.bots.get(bot_id)
-            if not bot: continue
+            bot_cfg = self.bots.get(bot_id)
+            if not bot_cfg: continue
             
             # If a bot stopped when it wasn't supposed to, we alert the admins
-            log.warning(f"ALERT: Bot {bot.name} ({bot_id}) stopped unexpectedly.")
-            if self.admin_channel_id:
-                channel = self.get_channel(int(self.admin_channel_id))
-                if channel:
-                    alert_msg = self.i18n.get("bot_stopped_alert", "", name=bot.name, id=bot_id)
-                    await channel.send(alert_msg)
+            log.warning(f"ALERT: Bot {bot_cfg.name} ({bot_id}) stopped unexpectedly.")
+            alert_msg = get_feedback(self.i18n, "bot_stopped_alert", name=bot_cfg.name, id=bot_id)
+            await self.notify_admin(alert_msg)
 
 
 # This is where the program starts!
@@ -325,4 +327,4 @@ if __name__ == "__main__":
         bot.run(TOKEN)
     else:
         # If the token is missing, we log an error message
-        log.error(bot.i18n.get("error_no_token", "Error: DISCORD_TOKEN not found in .env!"))
+        log.error(get_feedback(bot.i18n, "error_no_token"))

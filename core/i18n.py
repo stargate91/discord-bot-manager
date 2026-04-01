@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from core.logger import log
 
 # This class helps us show the bot in different languages (like Hungarian or English)
@@ -14,13 +15,21 @@ class LocalizationService:
         log.info(f"[DEBUG] LocalizationService: Initialization for {default_lang} complete.")
 
     def load_translations(self, lang):
-        """This function loads the right language file (messages.json or messages_en.json)."""
+        """This function loads the right language file (locales/hu.json or locales/en.json)."""
         self.current_lang = lang
-        # Hungarian is special, it uses the main messages.json file
-        file_name = "messages.json" if lang == "hu" else f"messages_{lang}.json"
+        # Folders and file name setup
+        locales_dir = "locales"
+        file_name = f"{lang}.json"
+        file_path = os.path.join(locales_dir, file_name)
         
-        log.info(f"[DEBUG] LocalizationService: Checking existence of {file_name}...")
-        if os.path.exists(file_name):
+        # Fallback for old structure if transition isn't complete (Optional but safe)
+        if not os.path.exists(file_path):
+            old_file_name = "messages.json" if lang == "hu" else f"messages_{lang}.json"
+            if os.path.exists(old_file_name):
+                file_path = old_file_name
+        
+        log.info(f"[Localization] Checking {file_path}...")
+        if os.path.exists(file_path):
             log.info(f"[DEBUG] LocalizationService: {file_name} exists. Opening...")
             try:
                 with open(file_name, "r", encoding="utf-8") as f:
@@ -43,16 +52,32 @@ class LocalizationService:
                 self.load_translations("hu")
 
     def get(self, key, default=None, **kwargs):
-        """This function gets a translated text and fills in any variables."""
-        # We look for the 'key' in our dictionary
+        """This function gets a translated text and fills in any variables/icons."""
+        # 1. Look for the 'key' in our dictionary
         text = self.translations.get(key, default or key)
+        
+        if not isinstance(text, str):
+            text = str(text)
+
+        # 2. Support Icon placeholders like {SUCCESS} or {ERROR}
+        if "{" in text:
+            try:
+                from core.icons import Icons
+                placeholders = re.findall(r"\{([A-Z0-9_]+)\}", text)
+                for p in placeholders:
+                    if hasattr(Icons, p):
+                        icon_val = getattr(Icons, p)
+                        text = text.replace(f"{{{p}}}", str(icon_val))
+            except Exception as e:
+                log.error(f"[Localization] Icon replacement failed for '{key}': {e}")
+
+        # 3. Support for dynamic variables (.format(**kwargs))
         try:
-            # .format(**kwargs) replaces things like {name} with real values
-            return str(text).format(**kwargs)
+            return text.format(**kwargs)
         except Exception as e:
             # If we messed up the formatting, just return the plain text
             log.error(f"Error formatting translation key '{key}': {e}")
-            return str(text)
+            return text
 
     def localize_commands(self, tree, guild=None):
         """This function translates only the descriptions of our slash commands."""

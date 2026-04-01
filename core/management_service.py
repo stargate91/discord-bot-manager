@@ -3,6 +3,7 @@ import sys
 import asyncio
 import json
 from core.logger import log
+from core.utils import get_feedback
 
 class ManagementService:
     """This service handles high-level management tasks like updating and restarting bots."""
@@ -29,7 +30,7 @@ class ManagementService:
     async def run_restart(self, bot_id):
         """Restarts a bot and any related bots in the same directory."""
         if bot_id not in self.bots:
-            return self.i18n.get("error_id_not_found", "Bot ID not found in config.")
+            return get_feedback(self.i18n, "error_id_not_found")
 
         bot = self.bots[bot_id]
         related_bots = [b for b in self.bots.values() if b.path == bot.path]
@@ -49,13 +50,13 @@ class ManagementService:
                 # 2. Restart process using unified logic
                 new_pid = await self.process_manager.restart_process(b.id, b, bot_env)
                 
-                success_msg = self.i18n.get("restart_success", "Bot {name} restarted (PID: {pid})", name=b.name, pid=new_pid)
+                success_msg = get_feedback(self.i18n, "restart_success", name=b.name, pid=new_pid)
                 results.append(success_msg)
                 
                 # Notify admin
-                await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online. (PID: {pid})", name=b.name, id=b.id, pid=new_pid))
+                await self.notify(get_feedback(self.i18n, "bot_online_log", name=b.name, id=b.id, pid=new_pid))
             except Exception as e:
-                error_msg = self.i18n.get("restart_error", "Error restarting {name}: {error}", name=b.name, error=str(e))
+                error_msg = get_feedback(self.i18n, "restart_error", name=b.name, error=str(e))
                 results.append(error_msg)
 
         return "\n".join(results)
@@ -63,7 +64,7 @@ class ManagementService:
     async def run_update(self, bot_id):
         """Updates code via Git and then restarts the bots ONLY if changes were found."""
         if bot_id not in self.bots:
-            return self.i18n.get("error_id_not_found", "Bot ID not found in config.")
+            return get_feedback(self.i18n, "error_id_not_found"), None
 
         bot = self.bots[bot_id]
         related_bots = [b for b in self.bots.values() if b.path == bot.path]
@@ -76,12 +77,12 @@ class ManagementService:
             results.append(up_msg)
             
             if not up_success:
-                results.append(self.i18n.get("error_git_update_failed", "Git update failed."))
+                results.append(get_feedback(self.i18n, "error_git_update_failed"))
                 return "\n".join(results), None
 
             if not changed:
                 # No changes found, skip restart
-                results.append(self.i18n.get("update_no_changes", "No updates found, restart skipped."))
+                results.append(get_feedback(self.i18n, "update_no_changes"))
                 return "\n".join(results), None
 
             # 2. If changed, stop all related bots
@@ -93,8 +94,8 @@ class ManagementService:
             results.append(pip_msg)
             
             if details:
-                ok_text = self.i18n.get("status_ok", "✅ OK")
-                err_prefix = self.i18n.get("status_error_prefix", "⚠️ Error:")
+                ok_text = get_feedback(self.i18n, "status_ok")
+                err_prefix = get_feedback(self.i18n, "status_error_prefix")
                 details["pip_status"] = ok_text if pip_success else f"{err_prefix} {pip_msg[:100]}"
 
             # 4. Restart all bots using unified logic
@@ -107,19 +108,19 @@ class ManagementService:
                 bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
 
                 new_pid = await self.process_manager.restart_process(b.id, b, bot_env)
-                restart_msg = self.i18n.get("restart_success", "Bot {name} restarted (PID: {pid})", name=b.name, pid=new_pid)
+                restart_msg = get_feedback(self.i18n, "restart_success", name=b.name, pid=new_pid)
                 results.append(restart_msg)
-                await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online. (PID: {pid})", name=b.name, id=b.id, pid=new_pid))
+                await self.notify(get_feedback(self.i18n, "bot_online_log", name=b.name, id=b.id, pid=new_pid))
             
             return "\n".join(results), details
         except Exception as e:
             log.error(f"Update error: {e}")
-            return self.i18n.get("error_update_general", "Error during update: {error}", error=str(e)), None
+            return get_feedback(self.i18n, "error_update_general", error=str(e)), None
 
     async def run_rollback(self, bot_id):
         """Rolls back code via Git and restarts all related bots."""
         if bot_id not in self.bots:
-            return self.i18n.get("error_unknown_bot", "Unknown Bot ID.")
+            return get_feedback(self.i18n, "error_unknown_bot"), None
             
         bot = self.bots[bot_id]
         related_bots = [b for b in self.bots.values() if b.path == bot.path]
@@ -145,13 +146,13 @@ class ManagementService:
                 bot_env["INSTANCE_NAME"] = b.cmd.split()[-1]
 
                 new_pid = await self.process_manager.start_process(b.id, b, bot_env)
-                restart_msg = self.i18n.get("restart_success", "Bot {name} restarted (PID: {pid})", name=b.name, pid=new_pid)
+                restart_msg = get_feedback(self.i18n, "restart_success", name=b.name, pid=new_pid)
                 results.append(restart_msg)
-                await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online. (PID: {pid})", name=b.name, id=b.id, pid=new_pid))
+                await self.notify(get_feedback(self.i18n, "bot_online_log", name=b.name, id=b.id, pid=new_pid))
             
             return "\n".join(results), details
         except Exception as e:
-            return self.i18n.get("error_rollback", "Error during rollback: {error}", error=str(e)), None
+            return get_feedback(self.i18n, "error_rollback", error=str(e)), None
 
     async def run_manager_update(self):
         """Updates the Bot Manager itself."""
@@ -173,8 +174,8 @@ class ManagementService:
             results.append(pip_msg)
             
             if details:
-                ok_text = self.i18n.get("status_ok", "✅ OK")
-                err_prefix = self.i18n.get("status_error_prefix", "⚠️ Error:")
+                ok_text = get_feedback(self.i18n, "status_ok")
+                err_prefix = get_feedback(self.i18n, "status_error_prefix")
                 details["pip_status"] = ok_text if pip_success else f"{err_prefix} {pip_msg[:100]}"
             
             return True, "\n".join(results), True, details

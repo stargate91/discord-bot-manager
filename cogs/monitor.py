@@ -10,7 +10,8 @@ import platform
 import shutil
 import subprocess
 from core.logger import log
-from core.utils import is_admin_context, is_monitor_context
+from core.utils import is_admin_context, is_monitor_context, get_feedback
+from core.icons import Icons
 
 class MonitoringCog(commands.Cog):
     def __init__(self, bot):
@@ -189,11 +190,11 @@ class MonitoringCog(commands.Cog):
             uptime_sec = delta.total_seconds()
             
             if uptime_sec > 86400:
-                uptime_str = self.bot.i18n.get("uptime_days", "{d} days ago", d=int(uptime_sec / 86400))
+                uptime_str = get_feedback(self.bot.i18n, "uptime_days", d=int(uptime_sec / 86400))
             elif uptime_sec > 3600:
-                uptime_str = self.bot.i18n.get("uptime_hours", "{h} hours ago", h=int(uptime_sec / 3600))
+                uptime_str = get_feedback(self.bot.i18n, "uptime_hours", h=int(uptime_sec / 3600))
             else:
-                uptime_str = self.bot.i18n.get("uptime_minutes", "{m} minutes ago", m=int(uptime_sec / 60))
+                uptime_str = get_feedback(self.bot.i18n, "uptime_minutes", m=int(uptime_sec / 60))
         
         # 1.5 System-wide Statistics
         try:
@@ -228,9 +229,9 @@ class MonitoringCog(commands.Cog):
             boot_time = psutil.boot_time()
             host_uptime_sec = datetime.datetime.now().timestamp() - boot_time
             if host_uptime_sec > 86400:
-                host_uptime_str = self.bot.i18n.get("uptime_days", "{d} days", d=int(host_uptime_sec / 86400))
+                host_uptime_str = get_feedback(self.bot.i18n, "uptime_days", d=int(host_uptime_sec / 86400))
             else:
-                host_uptime_str = self.bot.i18n.get("uptime_hours", "{h} hours", h=int(host_uptime_sec / 3600))
+                host_uptime_str = get_feedback(self.bot.i18n, "uptime_hours", h=int(host_uptime_sec / 3600))
 
             # Disk Usage
             du = shutil.disk_usage("/")
@@ -254,7 +255,9 @@ class MonitoringCog(commands.Cog):
                     return f"{bytes_per_sec / (1024*1024):.1f} MB/s"
                 return f"{bytes_per_sec / 1024:.1f} KB/s"
             
-            net_str = f"↓ {format_speed(down_speed)} | ↑ {format_speed(up_speed)}"
+            up_icon = str(Icons.UP) if Icons.UP else "↑"
+            down_icon = str(Icons.DOWN) if Icons.DOWN else "↓"
+            net_str = f"{down_icon} {format_speed(down_speed)} | {up_icon} {format_speed(up_speed)}"
 
         except Exception as e:
             log.warning(f"Failed to gather system stats: {e}")
@@ -311,17 +314,17 @@ class MonitoringCog(commands.Cog):
                 bot_entry["is_running"] = True
                 b_uptime_sec = stats["uptime_sec"]
                 if b_uptime_sec > 86400:
-                    b_uptime_str = self.bot.i18n.get("uptime_days", "{d} days ago", d=int(b_uptime_sec / 86400))
+                    b_uptime_str = get_feedback(self.bot.i18n, "uptime_days", d=int(b_uptime_sec / 86400))
                 elif b_uptime_sec > 3600:
-                    b_uptime_str = self.bot.i18n.get("uptime_hours", "{h} hours ago", h=int(b_uptime_sec / 3600))
+                    b_uptime_str = get_feedback(self.bot.i18n, "uptime_hours", h=int(b_uptime_sec / 3600))
                 else:
-                    b_uptime_str = self.bot.i18n.get("uptime_minutes", "{m} minutes ago", m=int(b_uptime_sec / 60))
+                    b_uptime_str = get_feedback(self.bot.i18n, "uptime_minutes", m=int(b_uptime_sec / 60))
                 
                 bot_config = self.bot.config.get("bots", {}).get(bot_id, {})
                 if bot_config.get("systemd_service"):
-                    status_text = self.bot.i18n.get("status_running_systemd", "Running (Systemd)")
+                    status_text = get_feedback(self.bot.i18n, "status_running_systemd")
                 else:
-                    status_text = self.bot.i18n.get("status_running", "Running")
+                    status_text = get_feedback(self.bot.i18n, "status_running")
 
                 bot_entry.update({
                     "status": status_text,
@@ -332,21 +335,21 @@ class MonitoringCog(commands.Cog):
                 })
             else:
                 if bot_id in self.bot.process_manager.manual_stop:
-                    bot_entry["status"] = self.bot.i18n.get("status_stopped", "Stopped")
+                    bot_entry["status"] = get_feedback(self.bot.i18n, "status_stopped")
                 else:
                     bot_config = self.bot.config.get("bots", {}).get(bot_id, {})
                     systemd_service = bot_config.get("systemd_service")
                     if systemd_service and os.name == 'posix':
                         state = self.bot.process_manager.get_systemd_state(systemd_service)
                         if state == "failed":
-                            bot_entry["status"] = self.bot.i18n.get("status_failed", "Failed")
+                            bot_entry["status"] = get_feedback(self.bot.i18n, "status_failed")
                         else:
-                            bot_entry["status"] = self.bot.i18n.get("status_stopped", "Stopped")
+                            bot_entry["status"] = get_feedback(self.bot.i18n, "status_stopped")
                     else:
                         if self.bot.process_manager.managed_processes.get(bot_id):
-                            bot_entry["status"] = self.bot.i18n.get("status_uncertain", "Status Uncertain (Access Denied)")
+                            bot_entry["status"] = get_feedback(self.bot.i18n, "status_uncertain")
                         else:
-                            bot_entry["status"] = self.bot.i18n.get("status_stopped", "Stopped")
+                            bot_entry["status"] = get_feedback(self.bot.i18n, "status_stopped")
             
             bots_stats[bot_id] = bot_entry
             
@@ -395,7 +398,7 @@ class MonitoringCog(commands.Cog):
         # We also trigger a Git fetch to ensure the "has update" indicators are fresh
         await self.git_fetch_task()
         await self.cleanup_and_recreate_panel()
-        await interaction.followup.send("Status panel recreated with fresh Git stats.", ephemeral=True)
+        await interaction.followup.send(get_feedback(self.bot.i18n, "status_refreshed"), ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(MonitoringCog(bot))

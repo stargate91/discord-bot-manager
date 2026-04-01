@@ -9,6 +9,7 @@ import subprocess
 from core.logger import log
 
 from core.icons import Icons
+from core.utils import get_feedback
 
 class BotControlButton(discord.ui.Button):
     def __init__(self, style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):
@@ -33,7 +34,7 @@ class BotControlButton(discord.ui.Button):
         has_admin_role = any(str(role.id) == str(admin_role_id) for role in interaction.user.roles) if admin_role_id else False
         
         if not (is_admin_perm or has_admin_role):
-            await interaction.response.send_message(i18n.get("error_admin_only", "❌ Administrator permissions or specific admin role required."), ephemeral=True)
+            await interaction.response.send_message(get_feedback(i18n, "error_admin_only"), ephemeral=True)
             return
             
         # Context (Guild/Channel) check
@@ -41,10 +42,10 @@ class BotControlButton(discord.ui.Button):
         admin_channel_id = getattr(bot, 'admin_channel_id', None)
         
         if guild_id and str(interaction.guild_id) != str(guild_id):
-            await interaction.response.send_message(i18n.get("error_invalid_guild", "❌ Invalid Server"), ephemeral=True)
+            await interaction.response.send_message(get_feedback(i18n, "error_invalid_guild"), ephemeral=True)
             return
         if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
-            await interaction.response.send_message(i18n.get("error_admin_channel_only", "❌ This can only be used in the admin channel."), ephemeral=True)
+            await interaction.response.send_message(get_feedback(i18n, "error_admin_channel_only"), ephemeral=True)
             return
             
         await interaction.response.defer(ephemeral=False)
@@ -57,7 +58,7 @@ class BotControlButton(discord.ui.Button):
             if self.action == "restart":
                 log.info(f"User {interaction.user} clicked SELF-RESTART for Manager")
                 service.prepare_manager_restart()
-                await interaction.followup.send(self.parent_view.i18n.get("status_restarting", "Manager restarting..."), ephemeral=False)
+                await interaction.followup.send(get_feedback(i18n, "status_restarting"), ephemeral=False)
                 await asyncio.sleep(2)
                 
                 # Robust restart logic
@@ -72,7 +73,7 @@ class BotControlButton(discord.ui.Button):
 
             elif self.action == "stop":
                 log.info(f"User {interaction.user} clicked SELF-STOP for Manager")
-                await interaction.followup.send(self.parent_view.i18n.get("status_stopping", "Manager shutting down..."), ephemeral=False)
+                await interaction.followup.send(get_feedback(i18n, "status_stopping"), ephemeral=False)
                 await asyncio.sleep(1)
                 sys.exit(0)
                 return
@@ -80,7 +81,7 @@ class BotControlButton(discord.ui.Button):
                 log.info(f"User {interaction.user} clicked SELF-UPDATE for Manager")
                 
                 # Immediate feedback
-                updating_msg = self.parent_view.i18n.get("manager_updating", "🔄 Manager update in progress...", name="Manager")
+                updating_msg = get_feedback(i18n, "manager_updating", name="Manager")
                 await interaction.followup.send(updating_msg, ephemeral=False)
                 
                 success, output, changed, details = await service.run_manager_update()
@@ -88,21 +89,21 @@ class BotControlButton(discord.ui.Button):
                 if not success:
                     if len(output) > 1500:
                         output = output[:700] + "\n... [TRUNCATED] ...\n" + output[-700:]
-                    msg = i18n.get("error_update_failed_output", "❌ Update failed:\n{output}", output=output)
+                    msg = get_feedback(i18n, "error_update_failed_output", output=output)
                     await interaction.followup.send(msg, ephemeral=False)
                     return
                 if not changed:
-                    await interaction.followup.send(self.parent_view.i18n.get("update_no_changes", "No updates found."), ephemeral=False)
+                    await interaction.followup.send(get_feedback(i18n, "update_no_changes"), ephemeral=False)
                     return
                 # If changed and success, trigger restart
                 service.prepare_manager_restart()
                 
                 if details:
-                    title = i18n.get("update_result_title", "✅ {name} updated", name="Manager")
+                    title = get_feedback(i18n, "update_result_title", name="Manager")
                     embed = UpdateResultEmbed(i18n, title, details, ui_settings=getattr(bot, 'ui_settings', None))
                     await interaction.followup.send(embed=embed, ephemeral=False)
                 else:
-                    msg = self.parent_view.i18n.get("manager_update_success", "Manager updated. Restarting...", name="Manager", output=output)
+                    msg = get_feedback(i18n, "manager_update_success", name="Manager", output=output)
                     if len(msg) > 1900:
                         msg = msg[:1000] + "\n... [TRUNCATED] ...\n" + msg[-800:]
                     await interaction.followup.send(msg, ephemeral=False)
@@ -146,7 +147,7 @@ class BotControlButton(discord.ui.Button):
         elif self.action == "stop":
             log.info(f"User {interaction.user} clicked STOP for {self.bot_name} ({self.bot_id})")
             await service.process_manager.stop_process(self.bot_id)
-            result = self.parent_view.i18n.get("status_stopped", "Stopped")
+            result = get_feedback(i18n, "status_stopped")
         elif self.action == "update":
             log.info(f"User {interaction.user} clicked UPDATE for {self.bot_name} ({self.bot_id})")
             result_msg, details = await service.run_update(self.bot_id)
@@ -185,7 +186,7 @@ class BotControlButton(discord.ui.Button):
                     
                     bot.loop.create_task(_delayed_panel_refresh(monitor, bot, self.parent_view.i18n))
 
-                title = self.parent_view.i18n.get("update_result_title", "✅ {name} updated", name=self.bot_name)
+                title = get_feedback(self.parent_view.i18n, "update_result_title", name=self.bot_name)
                 embed = UpdateResultEmbed(self.parent_view.i18n, title, details)
                 await interaction.followup.send(embed=embed, ephemeral=False)
                 return
@@ -212,25 +213,25 @@ class StatusContainer(Container):
         stop_emoji = Icons.STOP
 
         # 1. Manager Header & Stats
-        cpu_label = i18n.get("cpu", "CPU")
-        ram_label = i18n.get("ram", "RAM")
-        host_label = i18n.get("host_os", "Host OS")
-        free_label = i18n.get("system_free", "Free")
-        disk_label = i18n.get("disk", "Disk")
-        swap_label = i18n.get("swap", "Swap")
-        server_up_label = i18n.get("server_uptime", "Server")
-        log_label = i18n.get("log_size", "Log")
-        update_available_msg = i18n.get("update_available", "UPDATE AVAILABLE")
+        cpu_label = get_feedback(i18n, "cpu")
+        ram_label = get_feedback(i18n, "ram")
+        host_label = get_feedback(i18n, "host_os")
+        free_label = get_feedback(i18n, "system_free")
+        disk_label = get_feedback(i18n, "disk")
+        swap_label = get_feedback(i18n, "swap")
+        server_up_label = get_feedback(i18n, "server_uptime")
+        log_label = get_feedback(i18n, "log_size")
+        update_available_msg = get_feedback(i18n, "update_available")
         
-        manager_up_alert = f" ⚠️ **{update_available_msg}**" if manager_stats.get("has_update") else ""
+        manager_up_alert = f" {Icons.WARNING} **{update_available_msg}**" if manager_stats.get("has_update") else ""
         
         manager_text = (
             f"**{bot_manager.manager_name}**{manager_up_alert}\n"
-            f"**{i18n.get('status_running', 'Running')}**\n"
-            f"> {i18n.get('uptime', 'Uptime')}: {manager_stats['uptime']} | {server_up_label}: {manager_stats['host_uptime']}\n"
-            f"> {i18n.get('branch', 'Branch')}: `{manager_stats['branch']}`\n"
+            f"**{get_feedback(i18n, 'status_running')}**\n"
+            f"> {get_feedback(i18n, 'uptime')}: {manager_stats['uptime']} | {server_up_label}: {manager_stats['host_uptime']}\n"
+            f"> {get_feedback(i18n, 'branch')}: `{manager_stats['branch']}`\n"
             f"> {host_label}: `{manager_stats['os']}`\n"
-            f"> {i18n.get('resources', 'Resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB` | Net: `{manager_stats['net']}`\n"
+            f"> {get_feedback(i18n, 'resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB` | Net: `{manager_stats['net']}`\n"
             f"> {free_label}: CPU: `{int(manager_stats['sys_cpu_free'])}%` | {ram_label}: `{int(manager_stats['sys_ram_free'])} MB` | {disk_label}: `{int(manager_stats['sys_disk_free'])} GB` | {swap_label}: `{manager_stats['swap']}%`"
         )
         self.add_item(TextDisplay(manager_text))
@@ -250,22 +251,20 @@ class StatusContainer(Container):
 
         # 2. Managed Bots Sections
         if bots_stats:
-            self.add_item(TextDisplay(f"**{i18n.get('bots_status_header', 'Managed Bots')}**"))
+            self.add_item(TextDisplay(f"**{get_feedback(i18n, 'bots_status_header')}**"))
             
             # We keep track of the indexed for separator logic
             bot_list = list(bots_stats.items())
             for i, (b_id, b_info) in enumerate(bot_list):
                 b_name = b_info["name"]
-                up_alert = f" ⚠️ **{update_available_msg}**" if b_info.get("has_update") else ""
+                up_alert = f" {Icons.WARNING} **{update_available_msg}**" if b_info.get("has_update") else ""
                 
                 if b_info["is_running"]:
-                    status_emoji = "🟢"
-                    up_label = i18n.get("uptime_short", "Up")
+                    up_label = get_feedback(i18n, "uptime_short")
                     details = f"{cpu_label}: `{b_info['cpu']}%` | {ram_label}: `{int(b_info['ram'])} MB` | {up_label}: {b_info['uptime']} | {log_label}: `{b_info['log_size']}`"
-                    bot_text = f"**{status_emoji} {b_name}** ({b_id}){up_alert}\n{details}\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
+                    bot_text = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{details}\n`{get_feedback(i18n, 'path')}: {b_info['path']}`"
                 else:
-                    # If not running, b_info['status'] already contains the red dot
-                    bot_text = f"**{b_name}** ({b_id}){up_alert}\n*{b_info['status']}* | {log_label}: `{b_info['log_size']}`\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
+                    bot_text = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{log_label}: `{b_info['log_size']}`\n`{get_feedback(i18n, 'path')}: {b_info['path']}`"
                 
                 self.add_item(TextDisplay(bot_text))
                 
@@ -311,20 +310,20 @@ class UpdateResultEmbed(discord.Embed):
 
         super().__init__(
             title=title,
-            description=f"**{details['message']}**" if details else i18n.get("update_success", "Update successful."),
+            description=f"**{details['message']}**" if details else get_feedback(i18n, "update_success"),
             color=discord.Color(color_val),
             timestamp=discord.utils.utcnow()
         )
         
         if details:
-            self.add_field(name=i18n.get("hash", "Hash"), value=f"`{details['hash']}`", inline=True)
-            self.add_field(name=i18n.get("date", "Date"), value=f"<t:{details['date']}:R>", inline=True)
+            self.add_field(name=get_feedback(i18n, "hash"), value=f"`{details['hash']}`", inline=True)
+            self.add_field(name=get_feedback(i18n, "date"), value=f"<t:{details['date']}:R>", inline=True)
             
             if details.get("pip_status"):
-                self.add_field(name=i18n.get("pip_deps", "Pip Dependencies"), value=f"`{details['pip_status']}`", inline=False)
+                self.add_field(name=get_feedback(i18n, "pip_deps"), value=f"`{details['pip_status']}`", inline=False)
             
             if details.get("repo_url"):
-                label = i18n.get("open_on_web", "Open on Web")
-                self.add_field(name=i18n.get("git_repo", "Repository"), value=f"[{label}]({details['repo_url']})", inline=False)
+                label = get_feedback(i18n, "open_on_web")
+                self.add_field(name=get_feedback(i18n, "git_repo"), value=f"[{label}]({details['repo_url']})", inline=False)
             
-        self.set_footer(text=i18n.get("update_footer", "Code status updated"))
+        self.set_footer(text=get_feedback(i18n, "update_footer"))
