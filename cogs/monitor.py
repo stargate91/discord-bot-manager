@@ -8,6 +8,7 @@ import datetime
 import asyncio
 import platform
 import shutil
+import subprocess
 from core.logger import log
 from core.utils import is_admin_context, is_monitor_context
 
@@ -366,8 +367,10 @@ class MonitoringCog(commands.Cog):
         log.info(f"User {interaction.user} requested manual /status recreation.")
         await interaction.response.defer(ephemeral=True)
         
+        # We also trigger a Git fetch to ensure the "has update" indicators are fresh
+        await self.git_fetch_task()
         await self.cleanup_and_recreate_panel()
-        await interaction.followup.send("Status panel recreated.", ephemeral=True)
+        await interaction.followup.send("Status panel recreated with fresh Git stats.", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(MonitoringCog(bot))
