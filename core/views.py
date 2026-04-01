@@ -151,8 +151,12 @@ class BotControlButton(discord.ui.Button):
             log.info(f"User {interaction.user} clicked UPDATE for {self.bot_name} ({self.bot_id})")
             result_msg, details = await service.run_update(self.bot_id)
             
+            # Clear the "update available" flag immediately on success
             if details:
-                # Use the class directly from this module
+                monitor = bot.get_cog('MonitoringCog')
+                if monitor:
+                    monitor.git_behind_status[self.bot_id] = False
+                    log.info(f"[Update] Cleared git_behind_status for {self.bot_id}")
 
                 title = self.parent_view.i18n.get("update_result_title", "✅ {name} updated", name=self.bot_name)
                 embed = UpdateResultEmbed(self.parent_view.i18n, title, details)
