@@ -21,15 +21,19 @@ class MonitoringCog(commands.Cog):
         bot_settings = self.bot.config.get("bot_settings", {})
         self.refresh_interval = bot_settings.get("status_refresh_seconds", 60)
         self.recreate_interval = bot_settings.get("status_recreate_minutes", 58)
+        
+        # Network stats tracking
+        self.last_net_io = psutil.net_io_counters()
+        self.last_net_time = datetime.datetime.now()
+        
+        # Git Status Tracking (bot_id -> is_behind)
+        self.git_behind_status = {}
 
     async def cog_load(self):
         """Called when the cog is loaded."""
         log.info("[Status] MonitoringCog loaded. Starting tasks...")
         self.update_status_task.change_interval(seconds=self.refresh_interval)
         self.recreate_status_task.change_interval(minutes=self.recreate_interval)
-        
-        # We don't start the tasks here because the bot might not be ready.
-        # We instead wait for on_ready in a separate listener or just use the tasks' before_loop.
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -38,17 +42,57 @@ class MonitoringCog(commands.Cog):
         # Small delay to ensure all guilds/channels are cached
         await asyncio.sleep(2)
         
+        # Initial Git fetch for all bots
+        await self.git_fetch_task()
+        
         await self.cleanup_and_recreate_panel()
         
         if not self.update_status_task.is_running():
             self.update_status_task.start()
         if not self.recreate_status_task.is_running():
             self.recreate_status_task.start()
+        if not self.git_fetch_task.is_running():
+            self.git_fetch_task.start()
 
     def cog_unload(self):
         """Stop tasks when the cog is unloaded."""
         self.update_status_task.cancel()
         self.recreate_status_task.cancel()
+        self.git_fetch_task.cancel()
+
+    @tasks.loop(minutes=10)
+    async def git_fetch_task(self):
+        """Periodically runs git fetch for all bots to check for updates."""
+        log.info("[Status] Checking for Git updates...")
+        
+        # Check Manager itself
+        manager_path = os.path.dirname(os.path.abspath(__file__))
+        # Correction: Manager is in the root, cogs/ is a subdir
+        manager_path = os.path.dirname(manager_path)
+        self.git_behind_status["manager"] = await self.check_if_behind(manager_path)
+        
+        # Check Managed Bots
+        for bot_id, bot_config in self.bot.bots.items():
+            self.git_behind_status[bot_id] = await self.check_if_behind(bot_config.path)
+
+    async def check_if_behind(self, path):
+        """Checks if a git repo is behind its remote."""
+        try:
+            # 1. Fetch from remote
+            await asyncio.to_thread(subprocess.run, ["git", "fetch"], cwd=path, check=False, capture_output=True)
+            # 2. Count commits behind
+            # git rev-list --count HEAD..@{u}
+            result = await asyncio.to_thread(
+                subprocess.run, 
+                ["git", "rev-list", "--count", "HEAD..@{u}"], 
+                cwd=path, capture_output=True, text=True, check=False
+            )
+            if result.returncode == 0:
+                count = int(result.stdout.strip())
+                return count > 0
+        except Exception:
+            pass
+        return False
 
     async def cleanup_and_recreate_panel(self):
         """Deletes the old status panel (if any) and creates a new one."""
@@ -119,7 +163,6 @@ class MonitoringCog(commands.Cog):
         try:
             # OS details
             if os.name == 'posix':
-                # Try to get a nicer name like "Debian 12" instead of generic Linux
                 try:
                     with open("/etc/os-release") as f:
                         lines = f.readlines()
@@ -135,23 +178,57 @@ class MonitoringCog(commands.Cog):
                 os_name = f"{platform.system()} {platform.release()}"
 
             # Resources
-            # Note: cpu_percent(interval=None) might return 0 on the first call, 
-            # but since this runs in a loop, it should stabilize.
             sys_cpu_usage = psutil.cpu_percent(interval=None)
             sys_cpu_free = max(0, 100 - sys_cpu_usage)
             
             vm = psutil.virtual_memory()
             sys_ram_free = vm.available / (1024 * 1024)
             
-            # Disk Usage for the root partition
+            # Swap
+            swap = psutil.swap_memory()
+            sys_swap_percent = swap.percent
+            
+            # Host Uptime
+            boot_time = psutil.boot_time()
+            host_uptime_sec = datetime.datetime.now().timestamp() - boot_time
+            if host_uptime_sec > 86400:
+                host_uptime_str = self.bot.i18n.get("uptime_days", "{d} days", d=int(host_uptime_sec / 86400))
+            else:
+                host_uptime_str = self.bot.i18n.get("uptime_hours", "{h} hours", h=int(host_uptime_sec / 3600))
+
+            # Disk Usage
             du = shutil.disk_usage("/")
             sys_disk_free = du.free / (1024 * 1024 * 1024)
+            
+            # Network Speed
+            now = datetime.datetime.now()
+            net_now = psutil.net_io_counters()
+            dt = (now - self.last_net_time).total_seconds()
+            if dt > 0:
+                down_speed = (net_now.bytes_recv - self.last_net_io.bytes_recv) / dt
+                up_speed = (net_now.bytes_sent - self.last_net_io.bytes_sent) / dt
+            else:
+                down_speed, up_speed = 0, 0
+                
+            self.last_net_io = net_now
+            self.last_net_time = now
+            
+            def format_speed(bytes_per_sec):
+                if bytes_per_sec > 1024*1024:
+                    return f"{bytes_per_sec / (1024*1024):.1f} MB/s"
+                return f"{bytes_per_sec / 1024:.1f} KB/s"
+            
+            net_str = f"↓ {format_speed(down_speed)} | ↑ {format_speed(up_speed)}"
+
         except Exception as e:
             log.warning(f"Failed to gather system stats: {e}")
             os_name = "Unknown"
             sys_cpu_free = 0
             sys_ram_free = 0
             sys_disk_free = 0
+            sys_swap_percent = 0
+            host_uptime_str = "Unknown"
+            net_str = "Error"
 
         manager_stats = {
             "cpu": self_cpu,
@@ -161,7 +238,11 @@ class MonitoringCog(commands.Cog):
             "os": os_name,
             "sys_cpu_free": sys_cpu_free,
             "sys_ram_free": sys_ram_free,
-            "sys_disk_free": sys_disk_free
+            "sys_disk_free": sys_disk_free,
+            "swap": sys_swap_percent,
+            "host_uptime": host_uptime_str,
+            "net": net_str,
+            "has_update": self.git_behind_status.get("manager", False)
         }
         
         # 2. Managed Bot Statistics
@@ -169,10 +250,25 @@ class MonitoringCog(commands.Cog):
         for bot_id, bot in self.bot.bots.items():
             stats = self.bot.process_manager.get_stats(bot_id)
             
+            # Log file size
+            log_size_str = "N/A"
+            try:
+                log_file_path = os.path.join(bot.path, bot.log)
+                if os.path.exists(log_file_path):
+                    size_bytes = os.path.getsize(log_file_path)
+                    if size_bytes > 1024*1024:
+                        log_size_str = f"{size_bytes / (1024*1024):.1f} MB"
+                    else:
+                        log_size_str = f"{size_bytes / 1024:.1f} KB"
+            except:
+                pass
+
             bot_entry = {
                 "name": bot.name,
                 "path": bot.path,
-                "is_running": False
+                "is_running": False,
+                "log_size": log_size_str,
+                "has_update": self.git_behind_status.get(bot_id, False)
             }
 
             if stats:

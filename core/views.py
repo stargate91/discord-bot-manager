@@ -127,15 +127,21 @@ class StatusContainer(Container):
         host_label = i18n.get("host_os", "Host OS")
         free_label = i18n.get("system_free", "Free")
         disk_label = i18n.get("disk", "Disk")
+        swap_label = i18n.get("swap", "Swap")
+        server_up_label = i18n.get("server_uptime", "Server")
+        log_label = i18n.get("log_size", "Log")
+        update_available_msg = i18n.get("update_available", "UPDATE AVAILABLE")
+        
+        manager_up_alert = f" ⚠️ **{update_available_msg}**" if manager_stats.get("has_update") else ""
         
         manager_text = (
-            f"**{bot_manager.manager_name}**\n"
+            f"**{bot_manager.manager_name}**{manager_up_alert}\n"
             f"**{i18n.get('status_running', 'Running')}**\n"
-            f"> {i18n.get('uptime', 'Uptime')}: {manager_stats['uptime']}\n"
+            f"> {i18n.get('uptime', 'Uptime')}: {manager_stats['uptime']} | {server_up_label}: {manager_stats['host_uptime']}\n"
             f"> {i18n.get('branch', 'Branch')}: `{manager_stats['branch']}`\n"
             f"> {host_label}: `{manager_stats['os']}`\n"
-            f"> {i18n.get('resources', 'Resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB`\n"
-            f"> {free_label}: CPU: `{int(manager_stats['sys_cpu_free'])}%` | {ram_label}: `{int(manager_stats['sys_ram_free'])} MB` | {disk_label}: `{int(manager_stats['sys_disk_free'])} GB`"
+            f"> {i18n.get('resources', 'Resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB` | Net: `{manager_stats['net']}`\n"
+            f"> {free_label}: CPU: `{int(manager_stats['sys_cpu_free'])}%` | {ram_label}: `{int(manager_stats['sys_ram_free'])} MB` | {disk_label}: `{int(manager_stats['sys_disk_free'])} GB` | {swap_label}: `{manager_stats['swap']}%`"
         )
         self.add_item(TextDisplay(manager_text))
         
@@ -160,15 +166,16 @@ class StatusContainer(Container):
             bot_list = list(bots_stats.items())
             for i, (b_id, b_info) in enumerate(bot_list):
                 b_name = b_info["name"]
+                up_alert = f" ⚠️ **{update_available_msg}**" if b_info.get("has_update") else ""
                 
                 if b_info["is_running"]:
                     status_emoji = "🟢"
                     up_label = i18n.get("uptime_short", "Up")
-                    details = f"{cpu_label}: `{b_info['cpu']}%` | {ram_label}: `{int(b_info['ram'])} MB` | {up_label}: {b_info['uptime']}"
-                    bot_text = f"**{status_emoji} {b_name}** ({b_id})\n{details}\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
+                    details = f"{cpu_label}: `{b_info['cpu']}%` | {ram_label}: `{int(b_info['ram'])} MB` | {up_label}: {b_info['uptime']} | {log_label}: `{b_info['log_size']}`"
+                    bot_text = f"**{status_emoji} {b_name}** ({b_id}){up_alert}\n{details}\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
                 else:
                     # If not running, b_info['status'] already contains the red dot
-                    bot_text = f"**{b_name}** ({b_id})\n*{b_info['status']}*\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
+                    bot_text = f"**{b_name}** ({b_id}){up_alert}\n*{b_info['status']}* | {log_label}: `{b_info['log_size']}`\n`{i18n.get('path', 'Path')}: {b_info['path']}`"
                 
                 self.add_item(TextDisplay(bot_text))
                 
