@@ -155,8 +155,30 @@ class BotControlButton(discord.ui.Button):
             if details:
                 monitor = bot.get_cog('MonitoringCog')
                 if monitor:
+                    # Clear for this bot AND all related bots sharing the same path
+                    updated_path = bot.bots[self.bot_id].path if self.bot_id in bot.bots else None
                     monitor.git_behind_status[self.bot_id] = False
-                    log.info(f"[Update] Cleared git_behind_status for {self.bot_id}")
+                    if updated_path:
+                        for bid, bcfg in bot.bots.items():
+                            if bcfg.path == updated_path:
+                                monitor.git_behind_status[bid] = False
+                    log.info(f"[Update] Cleared git_behind_status for {self.bot_id} and related bots")
+                    
+                    # Immediately refresh the status panel so the UI updates
+                    try:
+                        if monitor.status_channel_id and monitor.status_message_id:
+                            channel = bot.get_channel(int(monitor.status_channel_id))
+                            if not channel:
+                                channel = await bot.fetch_channel(int(monitor.status_channel_id))
+                            if channel:
+                                msg = await channel.fetch_message(int(monitor.status_message_id))
+                                if msg:
+                                    manager_stats, bots_stats = monitor.get_status_data()
+                                    refreshed_view = ModernStatusView(bot, self.parent_view.i18n, manager_stats, bots_stats)
+                                    await msg.edit(view=refreshed_view)
+                                    log.info("[Update] Panel refreshed immediately after update.")
+                    except Exception as e:
+                        log.warning(f"[Update] Failed to refresh panel after update: {e}")
 
                 title = self.parent_view.i18n.get("update_result_title", "✅ {name} updated", name=self.bot_name)
                 embed = UpdateResultEmbed(self.parent_view.i18n, title, details)
