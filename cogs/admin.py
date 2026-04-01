@@ -199,7 +199,7 @@ class ManagementCog(commands.Cog):
     @is_admin_context()
     async def manager_restart(self, interaction: discord.Interaction):
         log.info(f"User {interaction.user} requested /manager-restart. Restarting {self.bot.manager_name}...")
-        msg = self.bot.i18n.get("manager_restart_msg", "Restarting {name}... ", name=self.bot.manager_name)
+        msg = self.bot.i18n.get("manager_restart_msg", "Restarting {name}... (PID: {pid})", name=self.bot.manager_name, pid=os.getpid())
         await interaction.response.send_message(msg, ephemeral=False)
         
         self.bot.management_service.prepare_manager_restart()
@@ -233,7 +233,7 @@ class ManagementCog(commands.Cog):
                 embed = UpdateResultEmbed(self.bot.i18n, title, details, ui_settings=self.bot.ui_settings)
                 await interaction.followup.send(embed=embed, ephemeral=False)
             else:
-                update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting...", name=self.bot.manager_name, output=output)
+                update_status = self.bot.i18n.get("manager_update_success", "Manager updated. Restarting... (PID: {pid})", name=self.bot.manager_name, output=output, pid=os.getpid())
                 if len(update_status) > 1900:
                     update_status = update_status[:1000] + "\n... [TRUNCATED] ...\n" + update_status[-800:]
                 await interaction.followup.send(update_status, ephemeral=False)

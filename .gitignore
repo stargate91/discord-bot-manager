@@ -39,6 +39,10 @@ temp_logs.txt
 *.db
 *.sqlite3
 
+# State and temp
+state.json
+tmp/
+
 # OS generated files
 .DS_Store
 .DS_Store?

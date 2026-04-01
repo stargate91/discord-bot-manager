@@ -11,6 +11,8 @@
         "log_default_lines": 50,
         "purge_limit": 1000,
         "check_interval_seconds": 60,
+        "status_refresh_seconds": 60,
+        "status_recreate_minutes": 58,
         "git_branch": "origin/main",
         "requirements_file": "requirements.txt",
         "rollback_ref": "HEAD@{1}",

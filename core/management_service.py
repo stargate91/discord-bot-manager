@@ -51,7 +51,7 @@ class ManagementService:
                 results.append(success_msg)
                 
                 # Notify admin
-                await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online.", name=b.name, id=b.id))
+                await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online. (PID: {pid})", name=b.name, id=b.id, pid=new_pid))
             except Exception as e:
                 error_msg = self.i18n.get("restart_error", "Error restarting {name}: {error}", name=b.name, error=str(e))
                 results.append(error_msg)
@@ -107,7 +107,7 @@ class ManagementService:
                 new_pid = await self.process_manager.restart_process(b.id, b, bot_env)
                 restart_msg = self.i18n.get("restart_success", "Bot {name} restarted (PID: {pid})", name=b.name, pid=new_pid)
                 results.append(restart_msg)
-                await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online.", name=b.name, id=b.id))
+                await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online. (PID: {pid})", name=b.name, id=b.id, pid=new_pid))
             
             return "\n".join(results), details
         except Exception as e:
@@ -145,7 +145,7 @@ class ManagementService:
                 new_pid = await self.process_manager.start_process(b.id, b, bot_env)
                 restart_msg = self.i18n.get("restart_success", "Bot {name} restarted (PID: {pid})", name=b.name, pid=new_pid)
                 results.append(restart_msg)
-                await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online.", name=b.name, id=b.id))
+                await self.notify(self.i18n.get("bot_online_log", "Bot {name} ({id}) is back online. (PID: {pid})", name=b.name, id=b.id, pid=new_pid))
             
             return "\n".join(results), details
         except Exception as e:

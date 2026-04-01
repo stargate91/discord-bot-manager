@@ -124,12 +124,18 @@ class StatusContainer(Container):
         # 1. Manager Header & Stats
         cpu_label = i18n.get("cpu", "CPU")
         ram_label = i18n.get("ram", "RAM")
+        host_label = i18n.get("host_os", "Host OS")
+        free_label = i18n.get("system_free", "Free")
+        disk_label = i18n.get("disk", "Disk")
+        
         manager_text = (
             f"**{bot_manager.manager_name}**\n"
             f"**{i18n.get('status_running', 'Running')}**\n"
             f"> {i18n.get('uptime', 'Uptime')}: {manager_stats['uptime']}\n"
             f"> {i18n.get('branch', 'Branch')}: `{manager_stats['branch']}`\n"
-            f"> {i18n.get('resources', 'Resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB`"
+            f"> {host_label}: `{manager_stats['os']}`\n"
+            f"> {i18n.get('resources', 'Resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB`\n"
+            f"> {free_label}: CPU: `{int(manager_stats['sys_cpu_free'])}%` | {ram_label}: `{int(manager_stats['sys_ram_free'])} MB` | {disk_label}: `{int(manager_stats['sys_disk_free'])} GB`"
         )
         self.add_item(TextDisplay(manager_text))
         
@@ -184,7 +190,8 @@ class ModernStatusView(LayoutView):
     def __init__(self, bot_manager, i18n, manager_stats, bots_stats):
         ui = getattr(bot_manager, 'ui_settings', {})
         timeout = ui.get("view_timeout", 300)
-        super().__init__(timeout=timeout)
+        # If timeout is 0 or None in config, or explicitly passed as None, we disable it
+        super().__init__(timeout=timeout if timeout else None)
         self.bot_manager = bot_manager
         self.i18n = i18n
         
@@ -214,7 +221,7 @@ class UpdateResultEmbed(discord.Embed):
         
         if details:
             self.add_field(name=i18n.get("hash", "Hash"), value=f"`{details['hash']}`", inline=True)
-            self.add_field(name=i18n.get("date", "Date"), value=details['date'], inline=True)
+            self.add_field(name=i18n.get("date", "Date"), value=f"<t:{details['date']}:R>", inline=True)
             
             if details.get("pip_status"):
                 self.add_field(name=i18n.get("pip_deps", "Pip Dependencies"), value=f"`{details['pip_status']}`", inline=False)

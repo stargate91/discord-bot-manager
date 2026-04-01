@@ -20,6 +20,7 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 # This is the name of our configuration file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
+STATE_FILE = os.path.join(BASE_DIR, "state.json")
 
 # This is our main 'Bot Manager' - it's like a boss that controls other bots
 class BotManager(commands.Bot):
@@ -90,6 +91,9 @@ class BotManager(commands.Bot):
         self.bots = {bid: BotConfig.from_dict(bid, bdata, default_log) for bid, bdata in raw_bots.items()}
         log.info(f"Initialized manager with {len(self.bots)} bots. Guild ID: {self.guild_id}")
 
+        # Load state
+        self.state = self.load_json(STATE_FILE)
+
         # We initialize the ManagementService to handle high-level logic (Update & Restart)
         self.management_service = ManagementService(
             self.config, 
@@ -99,6 +103,15 @@ class BotManager(commands.Bot):
             self.bots,
             notify_admin_cb=self.notify_admin
         )
+
+    def save_state(self, key, value):
+        """Saves a single key-value pair to the state.json file."""
+        self.state[key] = value
+        try:
+            with open(STATE_FILE, "w", encoding="utf-8") as f:
+                json.dump(self.state, f, indent=4)
+        except Exception as e:
+            log.error(f"Error saving state to {STATE_FILE}: {e}")
 
     @property
     def manager_name(self):
@@ -223,7 +236,7 @@ class BotManager(commands.Bot):
                     except Exception:
                         pass
                 if channel:
-                    msg = self.i18n.get("manager_online_log", "Manager {name} is back online.", name=self.manager_name)
+                    msg = self.i18n.get("manager_online_log", "Manager {name} is back online. (PID: {pid})", name=self.manager_name, pid=os.getpid())
                     await channel.send(msg)
             
             # We clean up the temporary file if it exists

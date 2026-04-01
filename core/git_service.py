@@ -29,7 +29,7 @@ class GitService:
             # Message
             message = subprocess.check_output(["git", "show", "-s", "--format=%s", rev], cwd=path).decode('utf-8').strip()
             # Date (relative)
-            date = subprocess.check_output(["git", "show", "-s", "--format=%cr", rev], cwd=path).decode('utf-8').strip()
+            date = subprocess.check_output(["git", "show", "-s", "--format=%ct", rev], cwd=path).decode('utf-8').strip()
             
             return {
                 "hash": commit_hash,
