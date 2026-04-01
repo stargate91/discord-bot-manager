@@ -86,14 +86,20 @@ class BotControlButton(discord.ui.Button):
                     return
                 # If changed and success, trigger restart
                 service.prepare_manager_restart()
-                msg = self.parent_view.i18n.get("manager_update_success", "Manager updated. Restarting...", name="Manager", output=output)
-                if len(msg) > 1900:
-                    msg = msg[:1000] + "\n... [TRUNCATED] ...\n" + msg[-800:]
                 
-                await interaction.followup.send(msg, ephemeral=False)
-
+                if details:
+                    title = i18n.get("update_result_title", "✅ {name} updated", name="Manager")
+                    embed = UpdateResultEmbed(i18n, title, details, ui_settings=getattr(bot, 'ui_settings', None))
+                    await interaction.followup.send(embed=embed, ephemeral=False)
+                else:
+                    msg = self.parent_view.i18n.get("manager_update_success", "Manager updated. Restarting...", name="Manager", output=output)
+                    if len(msg) > 1900:
+                        msg = msg[:1000] + "\n... [TRUNCATED] ...\n" + msg[-800:]
+                    await interaction.followup.send(msg, ephemeral=False)
+                
                 await asyncio.sleep(2)
                 os.execv(sys.executable, [sys.executable] + sys.argv)
+
 
                 return
 

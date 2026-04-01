@@ -38,8 +38,12 @@ class GitService:
                 "date": date
             }
         except Exception as e:
-            log.error(f"Failed to get commit details for {rev} at {path}: {e}")
+            log.error(f"[GitService] Failed to get commit details for {rev} at {path}: {e}")
+            # Log the specific error to help troubleshooting
+            import traceback
+            log.debug(traceback.format_exc())
             return None
+
 
     def get_remote_url(self, path):
         """Gets the web URL of the remote origin."""

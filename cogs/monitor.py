@@ -182,7 +182,11 @@ class MonitoringCog(commands.Cog):
         with current_proc.oneshot():
             self_cpu = current_proc.cpu_percent()
             self_ram_mb = current_proc.memory_info().rss / 1024 / 1024
-            uptime_sec = datetime.datetime.now().timestamp() - current_proc.create_time()
+            
+            # Use the actual start time from the bot instance to ensure it resets on restart
+            start_time = getattr(self.bot, 'start_time', datetime.datetime.now())
+            delta = datetime.datetime.now() - start_time
+            uptime_sec = delta.total_seconds()
             
             if uptime_sec > 86400:
                 uptime_str = self.bot.i18n.get("uptime_days", "{d} days ago", d=int(uptime_sec / 86400))

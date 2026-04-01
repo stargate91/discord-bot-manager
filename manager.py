@@ -57,6 +57,8 @@ class BotManager(commands.Bot):
         
         # We load UI settings for accent colors and timeouts
         self.ui_settings = self.config.get("ui_settings", {})
+        self.start_time = datetime.datetime.now()
+        log.info(f"BotManager initialized at {self.start_time} (PID: {os.getpid()})")
         
         # We set up the prefix (like '!') and the 'intents' (permissions)
         self.command_prefix = bot_settings.get("command_prefix", "!")
