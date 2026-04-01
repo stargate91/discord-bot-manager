@@ -18,25 +18,17 @@ class LocalizationService:
         """This function loads the right language file (locales/hu.json or locales/en.json)."""
         self.current_lang = lang
         # Folders and file name setup
-        locales_dir = "locales"
-        file_name = f"{lang}.json"
-        file_path = os.path.join(locales_dir, file_name)
-        
-        # Fallback for old structure if transition isn't complete (Optional but safe)
-        if not os.path.exists(file_path):
-            old_file_name = "messages.json" if lang == "hu" else f"messages_{lang}.json"
-            if os.path.exists(old_file_name):
-                file_path = old_file_name
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        locales_dir = os.path.join(base_dir, "locales")
+        file_path = os.path.join(locales_dir, f"{lang}.json")
         
         log.info(f"[Localization] Checking {file_path}...")
         if os.path.exists(file_path):
-            log.info(f"[DEBUG] LocalizationService: {file_name} exists. Opening...")
+            log.info(f"[Localization] Loading {file_path}...")
             try:
-                with open(file_name, "r", encoding="utf-8") as f:
-                    log.info(f"[DEBUG] LocalizationService: {file_name} opened. Loading JSON...")
+                with open(file_path, "r", encoding="utf-8") as f:
                     # We load the JSON data and update our dictionary
                     new_data = json.load(f)
-                    log.info(f"[DEBUG] LocalizationService: JSON loaded from {file_name}.")
                     self.translations.clear()
                     self.translations.update(new_data)
                 log.info(f"Loaded {len(self.translations)} translation keys for language: {lang}")

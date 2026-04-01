@@ -24,179 +24,198 @@ class BotControlButton(discord.ui.Button):
         self.parent_view = view
 
     async def callback(self, interaction: discord.Interaction):
-        # 1. Permission and context check (Buttons should be Admin-only)
-        bot = interaction.client
-        i18n = self.parent_view.i18n
-        
-        # Administrator permission OR specific role check
-        is_admin_perm = interaction.user.guild_permissions.administrator
-        admin_role_id = getattr(bot, 'admin_role_id', None)
-        has_admin_role = any(str(role.id) == str(admin_role_id) for role in interaction.user.roles) if admin_role_id else False
-        
-        if not (is_admin_perm or has_admin_role):
-            await interaction.response.send_message(get_feedback(i18n, "error_admin_only"), ephemeral=True)
-            return
-            
-        # Context (Guild/Channel) check
-        guild_id = getattr(bot, 'guild_id', None)
-        admin_channel_id = getattr(bot, 'admin_channel_id', None)
-        
-        if guild_id and str(interaction.guild_id) != str(guild_id):
-            await interaction.response.send_message(get_feedback(i18n, "error_invalid_guild"), ephemeral=True)
-            return
-        if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
-            await interaction.response.send_message(get_feedback(i18n, "error_admin_channel_only"), ephemeral=True)
-            return
-            
-        await interaction.response.defer(ephemeral=False)
-        
-        service = self.parent_view.bot_manager.management_service
-        result = ""
-        
-        # SPECIAL HANDLING FOR MANAGER SELF-CONTROLS
-        if self.bot_id == "manager":
-            if self.action == "restart":
-                log.info(f"User {interaction.user} clicked SELF-RESTART for Manager")
-                service.prepare_manager_restart()
-                await interaction.followup.send(get_feedback(i18n, "status_restarting"), ephemeral=False)
-                await asyncio.sleep(2)
-                
-                # Robust restart logic
-                try:
-                    os.execv(sys.executable, [sys.executable] + sys.argv)
-                except Exception as e:
-                    log.error(f"os.execv failed, trying subprocess fallback: {e}")
-                    subprocess.Popen([sys.executable] + sys.argv)
-                    sys.exit(0)
+        # We simply pass the request to our helper function
+        await handle_status_interaction(interaction, self.bot_id, self.action, self.bot_name)
 
-                return
-
-            elif self.action == "stop":
-                log.info(f"User {interaction.user} clicked SELF-STOP for Manager")
-                await interaction.followup.send(get_feedback(i18n, "status_stopping"), ephemeral=False)
-                await asyncio.sleep(1)
+async def handle_status_interaction(interaction: discord.Interaction, bot_id: str, action: str, bot_name: str = None):
+    """Core logic for handling status panel interactions (buttons).
+    This is extracted to allow global handling without a View instance.
+    """
+    bot = interaction.client
+    # We try to get i18n from the parent view if it exists, otherwise from bot
+    # Note: Global handler passes interaction without parent view.
+    i18n = getattr(bot, 'i18n', None)
+    
+    # 1. Permission and context check (Buttons should be Admin-only)
+    is_admin_perm = interaction.user.guild_permissions.administrator
+    admin_role_id = getattr(bot, 'admin_role_id', None)
+    has_admin_role = any(str(role.id) == str(admin_role_id) for role in interaction.user.roles) if admin_role_id else False
+    
+    if not (is_admin_perm or has_admin_role):
+        await interaction.response.send_message(get_feedback(i18n, "error_admin_only"), ephemeral=True)
+        return
+        
+    # Context (Guild/Channel) check
+    guild_id = getattr(bot, 'guild_id', None)
+    admin_channel_id = getattr(bot, 'admin_channel_id', None)
+    
+    if guild_id and str(interaction.guild_id) != str(guild_id):
+        await interaction.response.send_message(get_feedback(i18n, "error_invalid_guild"), ephemeral=True)
+        return
+    if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
+        await interaction.response.send_message(get_feedback(i18n, "error_admin_channel_only"), ephemeral=True)
+        return
+        
+    await interaction.response.defer(ephemeral=False)
+    
+    # Resolve bot name if not provided (needed for global handler)
+    if not bot_name:
+        if bot_id == "manager":
+            bot_name = getattr(bot, 'manager_name', 'Bot Manager')
+        elif hasattr(bot, 'bots') and bot_id in bot.bots:
+            bot_name = bot.bots[bot_id].name
+        else:
+            bot_name = bot_id
+            
+    service = getattr(bot, 'management_service', None)
+    if not service:
+        # Fallback for dynamic access if needed
+        from core.management_service import ManagementService
+        service = ManagementService(bot)
+        
+    result = ""
+    
+    # SPECIAL HANDLING FOR MANAGER SELF-CONTROLS
+    if bot_id == "manager":
+        if action == "restart":
+            log.info(f"User {interaction.user} clicked SELF-RESTART for Manager")
+            service.prepare_manager_restart()
+            await interaction.followup.send(get_feedback(i18n, "status_restarting"), ephemeral=False)
+            await asyncio.sleep(2)
+            
+            # Robust restart logic
+            try:
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+            except Exception as e:
+                log.error(f"os.execv failed, trying subprocess fallback: {e}")
+                subprocess.Popen([sys.executable] + sys.argv)
                 sys.exit(0)
-                return
-            elif self.action == "update":
-                log.info(f"User {interaction.user} clicked SELF-UPDATE for Manager")
-                
-                # Immediate feedback
-                updating_msg = get_feedback(i18n, "manager_updating", name="Manager")
-                await interaction.followup.send(updating_msg, ephemeral=False)
-                
-                success, output, changed, details = await service.run_manager_update()
 
-                if not success:
-                    if len(output) > 1500:
-                        output = output[:700] + "\n... [TRUNCATED] ...\n" + output[-700:]
-                    msg = get_feedback(i18n, "error_update_failed_output", output=output)
-                    await interaction.followup.send(msg, ephemeral=False)
-                    return
-                if not changed:
-                    await interaction.followup.send(get_feedback(i18n, "update_no_changes"), ephemeral=False)
-                    return
-                # If changed and success, trigger restart
-                service.prepare_manager_restart()
-                
-                if details:
-                    title = get_feedback(i18n, "update_result_title", name="Manager")
-                    embed = UpdateResultEmbed(i18n, title, details, ui_settings=getattr(bot, 'ui_settings', None))
-                    await interaction.followup.send(embed=embed, ephemeral=False)
-                else:
-                    msg = get_feedback(i18n, "manager_update_success", name="Manager", output=output)
-                    if len(msg) > 1900:
-                        msg = msg[:1000] + "\n... [TRUNCATED] ...\n" + msg[-800:]
-                    await interaction.followup.send(msg, ephemeral=False)
-                
-                await asyncio.sleep(2)
-                
-                # Manual panel cleanup BEFORE restart to prevent ghost panels
-                try:
-                    monitor = self.parent_view.bot_manager.get_cog('MonitoringCog')
-                    if monitor and monitor.status_message_id:
-                        log.info(f"[CleanRestart] Deleting old panel {monitor.status_message_id} before restart...")
-                        channel = self.parent_view.bot_manager.get_channel(int(monitor.status_channel_id))
-                        if not channel:
-                            channel = await self.parent_view.bot_manager.fetch_channel(int(monitor.status_channel_id))
-                        if channel:
-                            try:
-                                old_msg = await channel.fetch_message(int(monitor.status_message_id))
-                                await old_msg.delete()
-                                log.info("[CleanRestart] Old panel deleted successfully.")
-                            except discord.NotFound:
-                                pass
-                except Exception as e:
-                    log.warning(f"[CleanRestart] Failed to delete panel before restart: {e}")
+            return
 
-                # Robust restart logic
-                try:
-                    os.execv(sys.executable, [sys.executable] + sys.argv)
-                except Exception as e:
-                    log.error(f"os.execv failed during update, trying subprocess fallback: {e}")
-                    subprocess.Popen([sys.executable] + sys.argv)
-                    sys.exit(0)
-
-
-
-                return
-
-        # STANDARD BOT CONTROLS
-        if self.action == "restart":
-            log.info(f"User {interaction.user} clicked RESTART for {self.bot_name} ({self.bot_id})")
-            result = await service.run_restart(self.bot_id)
-        elif self.action == "stop":
-            log.info(f"User {interaction.user} clicked STOP for {self.bot_name} ({self.bot_id})")
-            await service.process_manager.stop_process(self.bot_id)
-            result = get_feedback(i18n, "status_stopped")
-        elif self.action == "update":
-            log.info(f"User {interaction.user} clicked UPDATE for {self.bot_name} ({self.bot_id})")
-            result_msg, details = await service.run_update(self.bot_id)
+        elif action == "stop":
+            log.info(f"User {interaction.user} clicked SELF-STOP for Manager")
+            await interaction.followup.send(get_feedback(i18n, "status_stopping"), ephemeral=False)
+            await asyncio.sleep(1)
+            sys.exit(0)
+            return
+        elif action == "update":
+            log.info(f"User {interaction.user} clicked SELF-UPDATE for Manager")
             
-            # Clear the "update available" flag immediately on success
+            # Immediate feedback
+            updating_msg = get_feedback(i18n, "manager_updating", name="Manager")
+            await interaction.followup.send(updating_msg, ephemeral=False)
+            
+            success, output, changed, details = await service.run_manager_update()
+
+            if not success:
+                if len(output) > 1500:
+                    output = output[:700] + "\n... [TRUNCATED] ...\n" + output[-700:]
+                msg = get_feedback(i18n, "error_update_failed_output", output=output)
+                await interaction.followup.send(msg, ephemeral=False)
+                return
+            if not changed:
+                await interaction.followup.send(get_feedback(i18n, "update_no_changes"), ephemeral=False)
+                return
+            # If changed and success, trigger restart
+            service.prepare_manager_restart()
+            
             if details:
-                monitor = bot.get_cog('MonitoringCog')
-                if monitor:
-                    # Clear for this bot AND all related bots sharing the same path
-                    updated_path = bot.bots[self.bot_id].path if self.bot_id in bot.bots else None
-                    monitor.git_behind_status[self.bot_id] = False
-                    if updated_path:
-                        for bid, bcfg in bot.bots.items():
-                            if bcfg.path == updated_path:
-                                monitor.git_behind_status[bid] = False
-                    log.info(f"[Update] Cleared git_behind_status for {self.bot_id} and related bots")
-                    
-                    # Schedule a delayed panel refresh so the callback can finish first
-                    # (replacing the view mid-callback causes discord.py to break subsequent interactions)
-                    async def _delayed_panel_refresh(monitor_ref, bot_ref, i18n_ref):
-                        await asyncio.sleep(3)
-                        try:
-                            if monitor_ref.status_channel_id and monitor_ref.status_message_id:
-                                ch = bot_ref.get_channel(int(monitor_ref.status_channel_id))
-                                if not ch:
-                                    ch = await bot_ref.fetch_channel(int(monitor_ref.status_channel_id))
-                                if ch:
-                                    panel_msg = await ch.fetch_message(int(monitor_ref.status_message_id))
-                                    if panel_msg:
-                                        ms, bs = monitor_ref.get_status_data()
-                                        new_view = ModernStatusView(bot_ref, i18n_ref, ms, bs)
-                                        await panel_msg.edit(view=new_view)
-                                        log.info("[Update] Panel refreshed after delay.")
-                        except Exception as ex:
-                            log.warning(f"[Update] Delayed panel refresh failed: {ex}")
-                    
-                    bot.loop.create_task(_delayed_panel_refresh(monitor, bot, self.parent_view.i18n))
-
-                title = get_feedback(self.parent_view.i18n, "update_result_title", name=self.bot_name)
-                embed = UpdateResultEmbed(self.parent_view.i18n, title, details)
+                title = get_feedback(i18n, "update_result_title", name="Manager")
+                embed = UpdateResultEmbed(i18n, title, details, ui_settings=getattr(bot, 'ui_settings', None))
                 await interaction.followup.send(embed=embed, ephemeral=False)
-                return
             else:
-                result = result_msg
+                msg = get_feedback(i18n, "manager_update_success", name="Manager", output=output)
+                if len(msg) > 1900:
+                    msg = msg[:1000] + "\n... [TRUNCATED] ...\n" + msg[-800:]
+                await interaction.followup.send(msg, ephemeral=False)
             
-        if len(result) > 1900:
-            result = result[:1000] + "\n... [TRUNCATED] ...\n" + result[-800:]
+            await asyncio.sleep(2)
             
-        await interaction.followup.send(result, ephemeral=False)
+            # Manual panel cleanup BEFORE restart to prevent ghost panels
+            try:
+                monitor = bot.get_cog('MonitoringCog')
+                if monitor and monitor.status_message_id:
+                    log.info(f"[CleanRestart] Deleting old panel {monitor.status_message_id} before restart...")
+                    channel = bot.get_channel(int(monitor.status_channel_id))
+                    if not channel:
+                        channel = await bot.fetch_channel(int(monitor.status_channel_id))
+                    if channel:
+                        try:
+                            old_msg = await channel.fetch_message(int(monitor.status_message_id))
+                            await old_msg.delete()
+                            log.info("[CleanRestart] Old panel deleted successfully.")
+                        except discord.NotFound:
+                            pass
+            except Exception as e:
+                log.warning(f"[CleanRestart] Failed to delete panel before restart: {e}")
+
+            # Robust restart logic
+            try:
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+            except Exception as e:
+                log.error(f"os.execv failed during update, trying subprocess fallback: {e}")
+                subprocess.Popen([sys.executable] + sys.argv)
+                sys.exit(0)
+
+            return
+
+    # STANDARD BOT CONTROLS
+    if action == "restart":
+        log.info(f"User {interaction.user} clicked RESTART for {bot_name} ({bot_id})")
+        result = await service.run_restart(bot_id)
+    elif action == "stop":
+        log.info(f"User {interaction.user} clicked STOP for {bot_name} ({bot_id})")
+        await service.process_manager.stop_process(bot_id)
+        result = get_feedback(i18n, "status_stopped")
+    elif action == "update":
+        log.info(f"User {interaction.user} clicked UPDATE for {bot_name} ({bot_id})")
+        result_msg, details = await service.run_update(bot_id)
+        
+        # Clear the "update available" flag immediately on success
+        if details:
+            monitor = bot.get_cog('MonitoringCog')
+            if monitor:
+                # Clear for this bot AND all related bots sharing the same path
+                updated_path = bot.bots[bot_id].path if bot_id in bot.bots else None
+                monitor.git_behind_status[bot_id] = False
+                if updated_path:
+                    for bid, bcfg in bot.bots.items():
+                        if bcfg.path == updated_path:
+                            monitor.git_behind_status[bid] = False
+                log.info(f"[Update] Cleared git_behind_status for {bot_id} and related bots")
+                
+                # Schedule a delayed panel refresh so the callback can finish first
+                async def _delayed_panel_refresh(monitor_ref, bot_ref, i18n_ref):
+                    await asyncio.sleep(3)
+                    try:
+                        if monitor_ref.status_channel_id and monitor_ref.status_message_id:
+                            ch = bot_ref.get_channel(int(monitor_ref.status_channel_id))
+                            if not ch:
+                                ch = await bot_ref.fetch_channel(int(monitor_ref.status_channel_id))
+                            if ch:
+                                panel_msg = await ch.fetch_message(int(monitor_ref.status_message_id))
+                                if panel_msg:
+                                    ms, bs = monitor_ref.get_status_data()
+                                    new_view = ModernStatusView(bot_ref, i18n_ref, ms, bs)
+                                    await panel_msg.edit(view=new_view)
+                                    log.info("[Update] Panel refreshed after delay.")
+                    except Exception as ex:
+                        log.warning(f"[Update] Delayed panel refresh failed: {ex}")
+                
+                bot.loop.create_task(_delayed_panel_refresh(monitor, bot, i18n))
+
+            title = get_feedback(i18n, "update_result_title", name=bot_name)
+            embed = UpdateResultEmbed(i18n, title, details)
+            await interaction.followup.send(embed=embed, ephemeral=False)
+            return
+        else:
+            result = result_msg
+        
+    if len(result) > 1900:
+        result = result[:1000] + "\n... [TRUNCATED] ...\n" + result[-800:]
+        
+    await interaction.followup.send(result, ephemeral=False)
         # We don't refresh the whole status message automatically here to avoid rate limits,
         # the user can click the Global Refresh button if they want.
 

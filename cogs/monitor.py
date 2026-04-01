@@ -42,8 +42,8 @@ class MonitoringCog(commands.Cog):
     async def on_ready(self):
         """Called when the bot is ready."""
         log.info(f"[Status] Cog on_ready starting for user: {self.bot.user}")
-        # Small delay to ensure all guilds/channels are cached
-        await asyncio.sleep(2)
+        # Wait for manager to finish its early setup (icons, etc)
+        await asyncio.sleep(3)
         
         try:
             # 1. Recreate the panel immediately (with existing/cached data)

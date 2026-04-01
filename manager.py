@@ -210,6 +210,24 @@ class BotManager(commands.Bot):
             if not interaction.response.is_done():
                 await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
 
+    async def on_interaction(self, interaction: discord.Interaction):
+        """Global interaction listener to handle persistent buttons."""
+        if interaction.type == discord.InteractionType.component:
+            custom_id = interaction.data.get("custom_id", "")
+            if custom_id.startswith("status:"):
+                # Handle status action via its custom_id (persistent behavior)
+                # Format: status:bot_id:action
+                parts = custom_id.split(":")
+                if len(parts) >= 3:
+                    bot_id = parts[1]
+                    action = parts[2]
+                    from core.views import handle_status_interaction
+                    await handle_status_interaction(interaction, bot_id, action)
+                    return # Action handled
+        
+        # Call the default interaction handler for everything else (like active Views)
+        await super().on_interaction(interaction)
+
     async def on_connect(self):
         """Dispatched when the bot has connected to Discord."""
         log.info("[DEBUG] on_connect called. Manager connected to Discord (Gateway). Waiting for cache/ready...")
@@ -222,10 +240,13 @@ class BotManager(commands.Bot):
 
     async def on_ready(self):
         """This runs when the bot is fully online and ready to go."""
-        log.info(f"on_ready event received. Logged in as: {self.user} (ID: {self.user.id if self.user else 'None'})")
-        
-        # We initialize our Icons with custom emojis from config
+        # 1. IMMEDIATE: Initialize our Icons with custom emojis from config
+        # This MUST happen before any UI is generated to prevent race conditions
+        log.info("[Manager] Initializing themeable icon system...")
+        from core.icons import Icons
         await Icons.setup_async(self)
+        
+        log.info(f"on_ready event received. Logged in as: {self.user} (ID: {self.user.id if self.user else 'None'})")
         
         # We wait a bit to ensure Discord's cache is fully ready
         await asyncio.sleep(2)
