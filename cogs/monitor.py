@@ -16,6 +16,7 @@ class MonitoringCog(commands.Cog):
         self.bot = bot
         self.status_message_id = self.bot.state.get("status_message_id")
         self.status_channel_id = self.bot.state.get("status_channel_id")
+        self._recreate_lock = asyncio.Lock()
         
         # Load settings from config
         bot_settings = self.bot.config.get("bot_settings", {})
@@ -94,54 +95,63 @@ class MonitoringCog(commands.Cog):
             pass
         return False
 
-    async def cleanup_and_recreate_panel(self):
-        """Deletes the old status panel (if any) and creates a new one."""
-        log.info("[Status] Cleaning up old status panel and creating a new one...")
+    async def cleanup_and_recreate_panel(self, triggered_by_id=None):
+        """Deletes the old status panel (if any) and creates a new one.
         
-        # 1. Try to delete the old message
-        if self.status_channel_id and self.status_message_id:
+        :param triggered_by_id: Optional. If provided, recreation only proceeds if current message ID matches this.
+        """
+        async with self._recreate_lock:
+            # 0. Concurrency Check: If we are wait/locked, check if someone else already DID the job
+            if triggered_by_id and self.status_message_id != triggered_by_id:
+                log.info(f"[Status] Cleanup skipped: message already recreated by another task (current: {self.status_message_id}, triggered by: {triggered_by_id})")
+                return
+
+            log.info("[Status] Cleaning up old status panel and creating a new one...")
+            
+            # 1. Try to delete the old message
+            if self.status_channel_id and self.status_message_id:
+                try:
+                    channel = self.bot.get_channel(int(self.status_channel_id))
+                    if not channel:
+                        channel = await self.bot.fetch_channel(int(self.status_channel_id))
+                    
+                    if channel:
+                        try:
+                            old_msg = await channel.fetch_message(int(self.status_message_id))
+                            await old_msg.delete()
+                            log.info(f"[Status] Deleted old status message: {self.status_message_id}")
+                        except discord.NotFound:
+                            log.info("[Status] Old status message not found (already deleted).")
+                except Exception as e:
+                    log.warning(f"[Status] Failed to cleanup old status message: {e}")
+
+            # 2. Create the new panel
+            admin_channel_id = self.bot.config.get("settings", {}).get("admin_channel_id")
+            if not admin_channel_id:
+                log.error("[Status] No admin_channel_id found in config. Cannot create status panel.")
+                return
+
             try:
-                channel = self.bot.get_channel(int(self.status_channel_id))
+                channel = self.bot.get_channel(int(admin_channel_id))
                 if not channel:
-                    channel = await self.bot.fetch_channel(int(self.status_channel_id))
+                    channel = await self.bot.fetch_channel(int(admin_channel_id))
                 
                 if channel:
-                    try:
-                        old_msg = await channel.fetch_message(int(self.status_message_id))
-                        await old_msg.delete()
-                        log.info(f"[Status] Deleted old status message: {self.status_message_id}")
-                    except discord.NotFound:
-                        log.info("[Status] Old status message not found (already deleted).")
+                    manager_stats, bots_stats = self.get_status_data()
+                    from core.views import ModernStatusView
+                    layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats)
+                    
+                    # IMPORTANT: Use a placeholder or initial content
+                    new_msg = await channel.send(view=layout)
+                    
+                    # 3. Save the new IDs
+                    self.status_message_id = str(new_msg.id)
+                    self.status_channel_id = str(channel.id)
+                    self.bot.save_state("status_message_id", self.status_message_id)
+                    self.bot.save_state("status_channel_id", self.status_channel_id)
+                    log.info(f"[Status] New status panel created: {self.status_message_id} in {self.status_channel_id}")
             except Exception as e:
-                log.warning(f"[Status] Failed to cleanup old status message: {e}")
-
-        # 2. Create the new panel
-        admin_channel_id = self.bot.config.get("settings", {}).get("admin_channel_id")
-        if not admin_channel_id:
-            log.error("[Status] No admin_channel_id found in config. Cannot create status panel.")
-            return
-
-        try:
-            channel = self.bot.get_channel(int(admin_channel_id))
-            if not channel:
-                channel = await self.bot.fetch_channel(int(admin_channel_id))
-            
-            if channel:
-                manager_stats, bots_stats = self.get_status_data()
-                from core.views import ModernStatusView
-                layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats)
-                
-                # IMPORTANT: Use a placeholder or initial content
-                new_msg = await channel.send(view=layout)
-                
-                # 3. Save the new IDs
-                self.status_message_id = str(new_msg.id)
-                self.status_channel_id = str(channel.id)
-                self.bot.save_state("status_message_id", self.status_message_id)
-                self.bot.save_state("status_channel_id", self.status_channel_id)
-                log.info(f"[Status] New status panel created: {self.status_message_id} in {self.status_channel_id}")
-        except Exception as e:
-            log.error(f"[Status] Failed to create new status panel: {e}", exc_info=True)
+                log.error(f"[Status] Failed to create new status panel: {e}", exc_info=True)
 
     def get_status_data(self):
         """Gathers statistics for the Manager and all Managed Bots."""
@@ -338,7 +348,8 @@ class MonitoringCog(commands.Cog):
                     await msg.edit(view=layout)
         except discord.NotFound:
             log.warning("[Status] Persistent status message lost. Recreating...")
-            await self.cleanup_and_recreate_panel()
+            # We pass the lost message ID to ensure we don't recreate twice
+            await self.cleanup_and_recreate_panel(triggered_by_id=self.status_message_id)
         except Exception as e:
             log.error(f"[Status] Error updating status panel: {e}")
 

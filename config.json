@@ -7,7 +7,7 @@
     "bot_settings": {
         "language": "hu",
         "command_prefix": "!",
-        "command_suffix": "_b",
+        "command_suffix": "_fixa",
         "log_default_lines": 50,
         "purge_limit": 1000,
         "check_interval_seconds": 60,
