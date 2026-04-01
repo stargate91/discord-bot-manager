@@ -242,7 +242,7 @@ class StatusContainer(Container):
         log_label = get_feedback(i18n, "log_size")
         update_available_msg = get_feedback(i18n, "update_available")
         
-        manager_up_alert = f" {Icons.WARNING} **{update_available_msg}**" if manager_stats.get("has_update") else ""
+        manager_up_alert = f" **{update_available_msg}**" if manager_stats.get("has_update") else ""
         
         manager_text = (
             f"**{bot_manager.manager_name}**{manager_up_alert}\n"
@@ -276,7 +276,7 @@ class StatusContainer(Container):
             bot_list = list(bots_stats.items())
             for i, (b_id, b_info) in enumerate(bot_list):
                 b_name = b_info["name"]
-                up_alert = f" {Icons.WARNING} **{update_available_msg}**" if b_info.get("has_update") else ""
+                up_alert = f" **{update_available_msg}**" if b_info.get("has_update") else ""
                 
                 if b_info["is_running"]:
                     up_label = get_feedback(i18n, "uptime_short")

@@ -17,31 +17,45 @@ class LocalizationService:
     def load_translations(self, lang):
         """This function loads the right language file (locales/hu.json or locales/en.json)."""
         self.current_lang = lang
-        # Folders and file name setup
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        locales_dir = os.path.join(base_dir, "locales")
-        file_path = os.path.join(locales_dir, f"{lang}.json")
         
-        log.info(f"[Localization] Checking {file_path}...")
-        if os.path.exists(file_path):
-            log.info(f"[Localization] Loading {file_path}...")
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    # We load the JSON data and update our dictionary
-                    new_data = json.load(f)
-                    self.translations.clear()
-                    self.translations.update(new_data)
-                log.info(f"Loaded {len(self.translations)} translation keys for language: {lang}")
-            except Exception as e:
-                # If something goes wrong, we go back to Hungarian as a backup
-                log.error(f"Failed to load translations for {lang}: {e}")
-                if lang != "hu":
-                    self.load_translations("hu") 
-        else:
-            # If the file is missing, we also use Hungarian as a backup
-            log.warning(f"Translation file {file_name} not found. Falling back to default.")
-            if lang != "hu":
-                self.load_translations("hu")
+        # Absolute path resolution logic
+        try:
+            # We get the directory of the current file (core/) and go up one level to the root
+            current_file_path = os.path.abspath(__file__)
+            core_dir = os.path.dirname(current_file_path)
+            base_dir = os.path.dirname(core_dir)
+            
+            locales_dir = os.path.join(base_dir, "locales")
+            file_path = os.path.normpath(os.path.join(locales_dir, f"{lang}.json"))
+            
+            log.info(f"[Localization] Initializing {lang} from: {file_path}")
+            
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        new_data = json.load(f)
+                        self.translations.clear()
+                        self.translations.update(new_data)
+                    log.info(f"[Localization] Successfully loaded {len(self.translations)} keys from {file_path}")
+                except Exception as e:
+                    log.error(f"[Localization] Error reading {file_path}: {e}")
+                    # Backup to hu if en fails, but avoid infinite recursion
+                    if lang != "hu":
+                        self.load_translations("hu")
+            else:
+                log.warning(f"[Localization] File NOT FOUND at: {file_path}")
+                # Try fallback to root for legacy support or alternative structures
+                root_fallback = os.path.join(base_dir, f"{lang}.json")
+                if os.path.exists(root_fallback):
+                    log.info(f"[Localization] Found fallback in root: {root_fallback}")
+                    with open(root_fallback, "r", encoding="utf-8") as f:
+                        self.translations.clear()
+                        self.translations.update(json.load(f))
+                elif lang != "hu":
+                    self.load_translations("hu")
+                    
+        except Exception as e:
+            log.error(f"[Localization] Fatal error in load_translations: {e}")
 
     def get(self, key, default=None, **kwargs):
         """This function gets a translated text and fills in any variables/icons."""
