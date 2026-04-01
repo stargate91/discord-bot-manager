@@ -1,7 +1,9 @@
 import discord
 from discord.ui import LayoutView, ActionRow, Container, TextDisplay, Separator
+import os
 import sys
 import asyncio
+
 from core.logger import log
 
 from core.icons import Icons
@@ -74,6 +76,8 @@ class BotControlButton(discord.ui.Button):
                 success, output, changed, details = await service.run_manager_update()
 
                 if not success:
+                    if len(output) > 1500:
+                        output = output[:700] + "\n... [TRUNCATED] ...\n" + output[-700:]
                     msg = i18n.get("error_update_failed_output", "❌ Update failed:\n{output}", output=output)
                     await interaction.followup.send(msg, ephemeral=False)
                     return
@@ -83,7 +87,11 @@ class BotControlButton(discord.ui.Button):
                 # If changed and success, trigger restart
                 service.prepare_manager_restart()
                 msg = self.parent_view.i18n.get("manager_update_success", "Manager updated. Restarting...", name="Manager", output=output)
+                if len(msg) > 1900:
+                    msg = msg[:1000] + "\n... [TRUNCATED] ...\n" + msg[-800:]
+                
                 await interaction.followup.send(msg, ephemeral=False)
+
                 await asyncio.sleep(2)
                 os.execv(sys.executable, [sys.executable] + sys.argv)
 
@@ -102,7 +110,8 @@ class BotControlButton(discord.ui.Button):
             result_msg, details = await service.run_update(self.bot_id)
             
             if details:
-                from core.views import UpdateResultEmbed
+                # Use the class directly from this module
+
                 title = self.parent_view.i18n.get("update_result_title", "✅ {name} updated", name=self.bot_name)
                 embed = UpdateResultEmbed(self.parent_view.i18n, title, details)
                 await interaction.followup.send(embed=embed, ephemeral=False)

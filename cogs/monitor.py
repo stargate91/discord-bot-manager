@@ -40,23 +40,32 @@ class MonitoringCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """Called when the bot is ready."""
-        log.info("[Status] Bot ready. Initializing persistent status panel...")
+        log.info(f"[Status] Cog on_ready starting for user: {self.bot.user}")
         # Small delay to ensure all guilds/channels are cached
         await asyncio.sleep(2)
         
-        # 1. Recreate the panel immediately (with existing/cached data)
-        await self.cleanup_and_recreate_panel()
-        
-        # 2. Start checking for Git updates in the background
-        # We don't await this because it can be slow and we want the panel visible now
-        self.bot.loop.create_task(self.git_fetch_task())
-        
-        if not self.update_status_task.is_running():
-            self.update_status_task.start()
-        if not self.recreate_status_task.is_running():
-            self.recreate_status_task.start()
-        if not self.git_fetch_task.is_running():
-            self.git_fetch_task.start()
+        try:
+            # 1. Recreate the panel immediately (with existing/cached data)
+            log.info("[Status] Initializing persistent status panel...")
+            await self.cleanup_and_recreate_panel()
+            
+            # 2. Start checking for Git updates in the background
+            log.info("[Status] Starting git fetch background task...")
+            self.bot.loop.create_task(self.git_fetch_task())
+            
+            log.info("[Status] Starting task loops...")
+            if not self.update_status_task.is_running():
+                self.update_status_task.start()
+            if not self.recreate_status_task.is_running():
+                self.recreate_status_task.start()
+            if not self.git_fetch_task.is_running():
+                self.git_fetch_task.start()
+            log.info("[Status] cog on_ready finished successfully.")
+        except Exception as e:
+            log.error(f"[Status] Error during cog on_ready: {e}")
+            import traceback
+            log.error(traceback.format_exc())
+
 
         
         if not self.update_status_task.is_running():
