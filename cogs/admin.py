@@ -204,7 +204,33 @@ class ManagementCog(commands.Cog):
         
         self.bot.management_service.prepare_manager_restart()
         await asyncio.sleep(2) # Give Discord time to finish delivery
-        os.execv(sys.executable, [sys.executable] + sys.argv)
+        
+        # Manual panel cleanup BEFORE restart to prevent ghost panels
+        try:
+            monitor = self.bot.get_cog('MonitoringCog')
+            if monitor and monitor.status_message_id:
+                log.info(f"[CleanRestart] Deleting old panel {monitor.status_message_id} before restart...")
+                channel = self.bot.get_channel(int(monitor.status_channel_id))
+                if not channel:
+                    channel = await self.bot.fetch_channel(int(monitor.status_channel_id))
+                if channel:
+                    try:
+                        old_msg = await channel.fetch_message(int(monitor.status_message_id))
+                        await old_msg.delete()
+                        log.info("[CleanRestart] Old panel deleted successfully.")
+                    except discord.NotFound:
+                        pass
+        except Exception as e:
+            log.warning(f"[CleanRestart] Failed to delete panel before restart: {e}")
+
+        # Robust restart logic
+        try:
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        except Exception as e:
+            log.error(f"os.execv failed during manual restart, trying subprocess fallback: {e}")
+            import subprocess
+            subprocess.Popen([sys.executable] + sys.argv)
+            sys.exit(0)
 
 
     @app_commands.command(name="manager-update", description="[Bot Dev] Git pull, pip install and restart Bot Manager.")
@@ -249,7 +275,34 @@ class ManagementCog(commands.Cog):
             self.bot.management_service.prepare_manager_restart()
             
             await asyncio.sleep(2) # Give Discord more time to finish delivery
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+            
+            # Manual panel cleanup BEFORE restart to prevent ghost panels
+            try:
+                monitor = self.bot.get_cog('MonitoringCog')
+                if monitor and monitor.status_message_id:
+                    log.info(f"[CleanRestart] Deleting old panel {monitor.status_message_id} before restart...")
+                    channel = self.bot.get_channel(int(monitor.status_channel_id))
+                    if not channel:
+                        channel = await self.bot.fetch_channel(int(monitor.status_channel_id))
+                    if channel:
+                        try:
+                            old_msg = await channel.fetch_message(int(monitor.status_message_id))
+                            await old_msg.delete()
+                            log.info("[CleanRestart] Old panel deleted successfully.")
+                        except discord.NotFound:
+                            pass
+            except Exception as e:
+                log.warning(f"[CleanRestart] Failed to delete panel before restart: {e}")
+
+            # Robust restart logic
+            try:
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+            except Exception as e:
+                log.error(f"os.execv failed during update restart, trying subprocess fallback: {e}")
+                import subprocess
+                subprocess.Popen([sys.executable] + sys.argv)
+                sys.exit(0)
+
 
         except Exception as e:
             log.error(f"Manager update failed: {e}")

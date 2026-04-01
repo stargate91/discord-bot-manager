@@ -3,6 +3,8 @@ from discord.ui import LayoutView, ActionRow, Container, TextDisplay, Separator
 import os
 import sys
 import asyncio
+import subprocess
+
 
 from core.logger import log
 
@@ -57,9 +59,17 @@ class BotControlButton(discord.ui.Button):
                 service.prepare_manager_restart()
                 await interaction.followup.send(self.parent_view.i18n.get("status_restarting", "Manager restarting..."), ephemeral=False)
                 await asyncio.sleep(2)
-                os.execv(sys.executable, [sys.executable] + sys.argv)
+                
+                # Robust restart logic
+                try:
+                    os.execv(sys.executable, [sys.executable] + sys.argv)
+                except Exception as e:
+                    log.error(f"os.execv failed, trying subprocess fallback: {e}")
+                    subprocess.Popen([sys.executable] + sys.argv)
+                    sys.exit(0)
 
                 return
+
             elif self.action == "stop":
                 log.info(f"User {interaction.user} clicked SELF-STOP for Manager")
                 await interaction.followup.send(self.parent_view.i18n.get("status_stopping", "Manager shutting down..."), ephemeral=False)
@@ -98,7 +108,33 @@ class BotControlButton(discord.ui.Button):
                     await interaction.followup.send(msg, ephemeral=False)
                 
                 await asyncio.sleep(2)
-                os.execv(sys.executable, [sys.executable] + sys.argv)
+                
+                # Manual panel cleanup BEFORE restart to prevent ghost panels
+                try:
+                    monitor = self.parent_view.bot_manager.get_cog('MonitoringCog')
+                    if monitor and monitor.status_message_id:
+                        log.info(f"[CleanRestart] Deleting old panel {monitor.status_message_id} before restart...")
+                        channel = self.parent_view.bot_manager.get_channel(int(monitor.status_channel_id))
+                        if not channel:
+                            channel = await self.parent_view.bot_manager.fetch_channel(int(monitor.status_channel_id))
+                        if channel:
+                            try:
+                                old_msg = await channel.fetch_message(int(monitor.status_message_id))
+                                await old_msg.delete()
+                                log.info("[CleanRestart] Old panel deleted successfully.")
+                            except discord.NotFound:
+                                pass
+                except Exception as e:
+                    log.warning(f"[CleanRestart] Failed to delete panel before restart: {e}")
+
+                # Robust restart logic
+                try:
+                    os.execv(sys.executable, [sys.executable] + sys.argv)
+                except Exception as e:
+                    log.error(f"os.execv failed during update, trying subprocess fallback: {e}")
+                    subprocess.Popen([sys.executable] + sys.argv)
+                    sys.exit(0)
+
 
 
                 return
