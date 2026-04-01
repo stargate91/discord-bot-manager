@@ -66,7 +66,13 @@ class BotControlButton(discord.ui.Button):
                 return
             elif self.action == "update":
                 log.info(f"User {interaction.user} clicked SELF-UPDATE for Manager")
+                
+                # Immediate feedback
+                updating_msg = self.parent_view.i18n.get("manager_updating", "🔄 Manager update in progress...", name="Manager")
+                await interaction.followup.send(updating_msg, ephemeral=False)
+                
                 success, output, changed, details = await service.run_manager_update()
+
                 if not success:
                     msg = i18n.get("error_update_failed_output", "❌ Update failed:\n{output}", output=output)
                     await interaction.followup.send(msg, ephemeral=False)

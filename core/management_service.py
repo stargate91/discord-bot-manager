@@ -6,13 +6,15 @@ from core.logger import log
 
 class ManagementService:
     """This service handles high-level management tasks like updating and restarting bots."""
-    def __init__(self, config, i18n, process_manager, git_service, bots, notify_admin_cb=None):
+    def __init__(self, config, i18n, process_manager, git_service, bots, notify_admin_cb=None, manager_root_path=None):
         self.config = config
         self.i18n = i18n
         self.process_manager = process_manager
         self.git_service = git_service
         self.bots = bots
         self.notify_admin_cb = notify_admin_cb
+        self.manager_root_path = manager_root_path or os.getcwd()
+
         
         # Load settings
         bot_settings = self.config.get("bot_settings", {})
@@ -153,7 +155,8 @@ class ManagementService:
 
     async def run_manager_update(self):
         """Updates the Bot Manager itself."""
-        manager_path = os.getcwd()
+        manager_path = self.manager_root_path
+
         results = []
         try:
             # 1. Update via Git

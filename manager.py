@@ -101,8 +101,10 @@ class BotManager(commands.Bot):
             self.process_manager, 
             self.git_service, 
             self.bots,
-            notify_admin_cb=self.notify_admin
+            notify_admin_cb=self.notify_admin,
+            manager_root_path=BASE_DIR
         )
+
 
     def save_state(self, key, value):
         """Saves a single key-value pair to the state.json file."""

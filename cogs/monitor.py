@@ -44,10 +44,20 @@ class MonitoringCog(commands.Cog):
         # Small delay to ensure all guilds/channels are cached
         await asyncio.sleep(2)
         
-        # Initial Git fetch for all bots
-        await self.git_fetch_task()
-        
+        # 1. Recreate the panel immediately (with existing/cached data)
         await self.cleanup_and_recreate_panel()
+        
+        # 2. Start checking for Git updates in the background
+        # We don't await this because it can be slow and we want the panel visible now
+        self.bot.loop.create_task(self.git_fetch_task())
+        
+        if not self.update_status_task.is_running():
+            self.update_status_task.start()
+        if not self.recreate_status_task.is_running():
+            self.recreate_status_task.start()
+        if not self.git_fetch_task.is_running():
+            self.git_fetch_task.start()
+
         
         if not self.update_status_task.is_running():
             self.update_status_task.start()
@@ -138,9 +148,11 @@ class MonitoringCog(commands.Cog):
                     channel = await self.bot.fetch_channel(int(admin_channel_id))
                 
                 if channel:
+                    log.info(f"[Status] Creating new panel in #{channel.name}...")
                     manager_stats, bots_stats = self.get_status_data()
                     from core.views import ModernStatusView
                     layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats)
+
                     
                     # IMPORTANT: Use a placeholder or initial content
                     new_msg = await channel.send(view=layout)
