@@ -109,7 +109,7 @@ class ManagementCog(commands.Cog):
 
     @app_commands.command(name="logs", description="[Bot Dev] Get last N lines of a bot log file.")
     @app_commands.describe(bot_id="The ID of the bot", lines="Number of lines")
-    @is_admin_context()
+    @is_monitor_context()
     @app_commands.autocomplete(bot_id=bot_id_autocomplete)
     async def logs(self, interaction: discord.Interaction, bot_id: str, lines: int | None = None):
         if lines is None:
@@ -377,10 +377,16 @@ class ManagementCog(commands.Cog):
             await interaction.followup.send(msg, ephemeral=True)
 
     @app_commands.command(name="purge", description="[Bot Dev] Deletes all messages in the current channel.")
-    @is_admin_context()
+    @is_monitor_context()
     async def purge(self, interaction: discord.Interaction):
-        """Törli az összes üzenetet a csatornában (csak adminnak a kijelölt csatornán)."""
+        """Törli az összes üzenetet a csatornában (Adminoknak/Mechanicoknak)."""
         await interaction.response.defer(ephemeral=True)
+        
+        from core.utils import AccessLevel, get_user_level
+        level = get_user_level(interaction.user, self.bot)
+        if level < AccessLevel.MECHANIC:
+            await interaction.followup.send("🛡️ Ebhez a művelethez nincs jogosultságod, ellenőr úr!", ephemeral=True)
+            return
         
         try:
             # Purge deletes messages

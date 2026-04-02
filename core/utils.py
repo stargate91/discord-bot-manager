@@ -145,91 +145,104 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
     return f"{emoji_str} {text}".strip()
 
 # This is a 'decorator' - it's a special function that checks something before running a command!
+class AccessLevel:
+    EVERYONE = 0
+    INSPECTOR = 1 # Tester Role
+    MECHANIC = 2 # Admin Role
+    BOSS = 3     # Administrator Permission
+
+def get_user_level(user, bot) -> int:
+    """Determine the highest access level of a user."""
+    # BOSS: Actual Discord Administrator
+    if hasattr(user, 'guild_permissions') and user.guild_permissions.administrator:
+        return AccessLevel.BOSS
+        
+    # Check roles for MECHANIC or INSPECTOR
+    if hasattr(user, 'roles'):
+        role_ids = [str(r.id) for r in user.roles]
+        
+        # MECHANIC: Has the admin role
+        if bot.admin_role_id and str(bot.admin_role_id) in role_ids:
+            return AccessLevel.MECHANIC
+            
+        # INSPECTOR: Has the tester role
+        if bot.tester_role_id and str(bot.tester_role_id) in role_ids:
+            return AccessLevel.INSPECTOR
+            
+    return AccessLevel.EVERYONE
+
+def is_in_valid_channel(interaction_or_ctx, bot, level: int) -> bool:
+    """Check if the current channel is allowed for the given access level."""
+    channel_id = str(interaction_or_ctx.channel_id if hasattr(interaction_or_ctx, 'channel_id') else interaction_or_ctx.channel.id)
+    
+    # Workshop (Admin Channel): BOSS and MECHANIC can do everything here
+    if bot.admin_channel_id and channel_id == str(bot.admin_channel_id):
+        return level >= AccessLevel.MECHANIC
+        
+    # Lounge (Public/Tester Channel): INSPECTOR and above can use it
+    if bot.public_channel_id and channel_id == str(bot.public_channel_id):
+        return level >= AccessLevel.INSPECTOR
+        
+    # Global: Only very basic things or BOSS everywhere
+    return level == AccessLevel.BOSS
+
+# Decorators
 def is_admin_context():
-    """This function checks if the user is allowed to use admin commands."""
+    """Slash command decorator: Requires MECHANIC level in Workshop or BOSS anywhere."""
     def predicate(interaction: discord.Interaction) -> bool:
         bot = interaction.client
-        # We try to get the ID settings from the bot object
-        guild_id = getattr(bot, 'guild_id', None)
-        admin_channel_id = getattr(bot, 'admin_channel_id', None)
-
-        # Check if we are on the right Discord server
-        if guild_id and str(interaction.guild_id) != str(guild_id):
-            log.warning(f"Slash Check Failed: Wrong Guild (Expected {guild_id}, got {interaction.guild_id})")
-            return False
-        # Check if we are in the right channel (the admin channel)
-        if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
-            log.warning(f"Slash Check Failed: Wrong Channel (Expected {admin_channel_id}, got {interaction.channel_id})")
-            return False
-            
-        # Check if the user is an administrator OR has the specific admin role
-        is_admin_perm = interaction.user.guild_permissions.administrator
-        admin_role_id = getattr(bot, 'admin_role_id', None)
+        level = get_user_level(interaction.user, bot)
         
-        has_admin_role = False
-        if admin_role_id and hasattr(interaction.user, 'roles'):
-            has_admin_role = any(str(role.id) == str(admin_role_id) for role in interaction.user.roles)
+        # Boss can do anything anywhere
+        if level == AccessLevel.BOSS:
+            return True
             
-        if not (is_admin_perm or has_admin_role):
-            log.warning(f"Slash Check Failed: No Permission for user {interaction.user} (Role ID: {admin_role_id})")
-            return False
+        # Mechanic can only do admin things in the Workshop
+        if bot.admin_channel_id and str(interaction.channel_id) == str(bot.admin_channel_id):
+            return level >= AccessLevel.MECHANIC
             
-        # If everything is correct, we return True
-        return True
+        return False
     return app_commands.check(predicate)
 
 def is_monitor_context():
-    """This function only checks if we are in the right guild/channel, ANYONE in that channel can run it."""
+    """Slash command decorator: Allows INSPECTOR level in either Admin or Public channels."""
     def predicate(interaction: discord.Interaction) -> bool:
         bot = interaction.client
-        guild_id = getattr(bot, 'guild_id', None)
-        admin_channel_id = getattr(bot, 'admin_channel_id', None)
-
-        if guild_id and str(interaction.guild_id) != str(guild_id):
-            return False
-        if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
-            return False
+        level = get_user_level(interaction.user, bot)
+        
+        if level == AccessLevel.BOSS:
+            return True
             
-        return True
+        channel_id = str(interaction.channel_id)
+        if (bot.admin_channel_id and channel_id == str(bot.admin_channel_id)) or \
+           (bot.public_channel_id and channel_id == str(bot.public_channel_id)):
+            return level >= AccessLevel.INSPECTOR
+            
+        return False
     return app_commands.check(predicate)
 
 def is_admin_prefix_context():
-    """Check for prefix commands (Context instead of Interaction)."""
+    """Prefix command decorator equivalent to is_admin_context."""
     async def predicate(ctx: commands.Context) -> bool:
         bot = ctx.bot
-        guild_id = getattr(bot, 'guild_id', None)
-        admin_channel_id = getattr(bot, 'admin_channel_id', None)
-
-        if guild_id and str(ctx.guild.id) != str(guild_id):
-            log.warning(f"Prefix Check Failed: Wrong Guild (Expected {guild_id}, got {ctx.guild.id})")
-            return False
-        if admin_channel_id and str(ctx.channel.id) != str(admin_channel_id):
-            log.warning(f"Prefix Check Failed: Wrong Channel (Expected {admin_channel_id}, got {ctx.channel.id})")
-            return False
-            
-        is_admin_perm = ctx.author.guild_permissions.administrator
-        admin_role_id = getattr(bot, 'admin_role_id', None)
-        has_admin_role = any(str(role.id) == str(admin_role_id) for role in ctx.author.roles) if admin_role_id else False
+        level = get_user_level(ctx.author, bot)
+        if level == AccessLevel.BOSS: return True
         
-        if not (is_admin_perm or has_admin_role):
-            log.warning(f"Prefix Check Failed: No Permission for user {ctx.author} (Role ID: {admin_role_id})")
-            return False
-
-        return True
-        
+        if bot.admin_channel_id and str(ctx.channel.id) == str(bot.admin_channel_id):
+            return level >= AccessLevel.MECHANIC
+        return False
     return commands.check(predicate)
 
 def is_monitor_prefix_context():
-    """Check for prefix commands (Channel only, no admin role required)."""
+    """Prefix command decorator equivalent to is_monitor_context."""
     async def predicate(ctx: commands.Context) -> bool:
         bot = ctx.bot
-        guild_id = getattr(bot, 'guild_id', None)
-        admin_channel_id = getattr(bot, 'admin_channel_id', None)
-
-        if guild_id and str(ctx.guild.id) != str(guild_id):
-            return False
-        if admin_channel_id and str(ctx.channel.id) != str(admin_channel_id):
-            return False
-            
-        return True
+        level = get_user_level(ctx.author, bot)
+        if level == AccessLevel.BOSS: return True
+        
+        channel_id = str(ctx.channel.id)
+        if (bot.admin_channel_id and channel_id == str(bot.admin_channel_id)) or \
+           (bot.public_channel_id and channel_id == str(bot.public_channel_id)):
+            return level >= AccessLevel.INSPECTOR
+        return False
     return commands.check(predicate)

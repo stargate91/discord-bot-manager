@@ -395,17 +395,29 @@ class MonitoringCog(commands.Cog):
         log.info("[Status] Periodic recreation of status panel triggered.")
         await self.cleanup_and_recreate_panel()
 
-    @app_commands.command(name="status", description="Manually refresh or recreate the status panel.")
+    @app_commands.command(name="status", description="Get a snapshot of the bot status (Private in public channels).")
     @is_monitor_context()
     async def status(self, interaction: discord.Interaction):
-        """Force a recreation of the status panel."""
-        log.info(f"User {interaction.user} requested manual /status recreation.")
-        await interaction.response.defer(ephemeral=True)
+        """Force a recreation of the status panel or send an ephemeral snapshot."""
+        log.info(f"User {interaction.user} requested /status snapshot.")
         
-        # We also trigger a Git fetch to ensure the "has update" indicators are fresh
+        # Check if we are in the primary admin channel
+        is_admin_channel = str(interaction.channel_id) == str(self.bot.admin_channel_id)
+        
+        # We always want fresh Git data for the snapshot/refresh
+        await interaction.response.defer(ephemeral=not is_admin_channel)
         await self.git_fetch_task()
-        await self.cleanup_and_recreate_panel()
-        await interaction.followup.send(get_feedback(self.bot.i18n, "status_refreshed"), ephemeral=True)
+        
+        if is_admin_channel:
+            # Persistent Refresh (Workshop)
+            await self.cleanup_and_recreate_panel()
+            await interaction.followup.send(get_feedback(self.bot.i18n, "status_refreshed"), ephemeral=True)
+        else:
+            # Ephemeral Snapshot (Lounge / Elsewhere)
+            from core.views import ModernStatusView
+            manager_stats, bots_stats = self.get_status_data()
+            layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats)
+            await interaction.followup.send(view=layout, ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(MonitoringCog(bot))

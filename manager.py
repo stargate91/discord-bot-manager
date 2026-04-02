@@ -85,10 +85,17 @@ class BotManager(commands.Bot):
         self.process_manager = ProcessManager(self.config, self.i18n.translations)
         self.git_service = GitService(self.config, self.i18n.translations)
         
-        # We save the IDs for the server and the admin channel
+        # We load the new access control settings (Roles and Channels)
         self.guild_id = settings.get("guild_id")
-        self.admin_channel_id = settings.get("admin_channel_id")
-        self.admin_role_id = settings.get("admin_role_id")
+        self.access_control = settings.get("access_control", {})
+        
+        ac_roles = self.access_control.get("roles", {})
+        ac_channels = self.access_control.get("channels", {})
+        
+        self.admin_channel_id = ac_channels.get("admin")
+        self.public_channel_id = ac_channels.get("public")
+        self.admin_role_id = ac_roles.get("admin")
+        self.tester_role_id = ac_roles.get("tester")
         
         # How often we should check if bots are still running
         self.check_interval = bot_settings.get("check_interval_seconds", 60)

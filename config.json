@@ -1,8 +1,16 @@
 {
     "settings": {
         "guild_id": "1083433370815582240",
-        "admin_channel_id": "1486516075905417216",
-        "admin_role_id": "1486685311919460402"
+        "access_control": {
+            "roles": {
+                "admin": "1486685311919460402",
+                "tester": "1486516144687812750"
+            },
+            "channels": {
+                "admin": "1486516075905417216",
+                "public": "1486515344674787399"
+            }
+        }
     },
     "bot_settings": {
         "language": "hu",

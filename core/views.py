@@ -28,35 +28,36 @@ class BotControlButton(discord.ui.Button):
         await handle_status_interaction(interaction, self.bot_id, self.action, self.bot_name)
 
 async def handle_status_interaction(interaction: discord.Interaction, bot_id: str, action: str, bot_name: str = None):
-    """Core logic for handling status panel interactions (buttons).
-    This is extracted to allow global handling without a View instance.
-    """
+    """Core logic for handling status panel interactions (buttons)."""
     bot = interaction.client
-    # We try to get i18n from the parent view if it exists, otherwise from bot
-    # Note: Global handler passes interaction without parent view.
     i18n = getattr(bot, 'i18n', None)
     
-    # 1. Permission and context check (Buttons should be Admin-only)
-    is_admin_perm = interaction.user.guild_permissions.administrator
-    admin_role_id = getattr(bot, 'admin_role_id', None)
-    has_admin_role = any(str(role.id) == str(admin_role_id) for role in interaction.user.roles) if admin_role_id else False
+    from core.utils import AccessLevel, get_user_level
     
-    if not (is_admin_perm or has_admin_role):
-        await interaction.response.send_message(get_feedback(i18n, "error_admin_only"), ephemeral=True)
+    # 1. Determine User Level
+    level = get_user_level(interaction.user, bot)
+    
+    # 2. Determine Required Level for Action
+    required_level = AccessLevel.MECHANIC
+    if action == "update" or action.endswith("-update"):
+        required_level = AccessLevel.BOSS
+    
+    # 3. Check Level Permissions
+    if level < required_level:
+        msg = get_feedback(i18n, "error_admin_only") if level < AccessLevel.INSPECTOR else "🛡️ Ebhez a művelethez nincs jogosultságod, ellenőr úr!"
+        await interaction.response.send_message(msg, ephemeral=True)
         return
         
-    # Context (Guild/Channel) check
-    guild_id = getattr(bot, 'guild_id', None)
-    admin_channel_id = getattr(bot, 'admin_channel_id', None)
-    
-    if guild_id and str(interaction.guild_id) != str(guild_id):
-        await interaction.response.send_message(get_feedback(i18n, "error_invalid_guild"), ephemeral=True)
-        return
-    if admin_channel_id and str(interaction.channel_id) != str(admin_channel_id):
+    # 4. Context (Channel) check
+    # BOSS can do anything anywhere (e.g. from an ephemeral snapshot in another channel)
+    # Others MUST be in the Admin Workshop
+    is_admin_channel = bot.admin_channel_id and str(interaction.channel_id) == str(bot.admin_channel_id)
+    if level < AccessLevel.BOSS and not is_admin_channel:
         await interaction.response.send_message(get_feedback(i18n, "error_admin_channel_only"), ephemeral=True)
         return
         
-    await interaction.response.defer(ephemeral=False)
+    # All checks passed
+    await interaction.response.defer(ephemeral=not is_admin_channel)
     
     # Resolve bot name if not provided (needed for global handler)
     if not bot_name:
