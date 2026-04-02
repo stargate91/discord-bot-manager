@@ -103,7 +103,6 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "status_restarting": Icons.RESTART,
         "status_stopping": Icons.STOP,
         "status_running": Icons.DOT_GREEN,
-        "status_running_systemd": Icons.DOT_GREEN,
         "status_stopped": Icons.DOT_RED,
         "activity_text": Icons.CONTROLLER,
         "activity_maintenance": Icons.WRENCH,

@@ -329,10 +329,8 @@ class MonitoringCog(commands.Cog):
                 else:
                     b_uptime_str = get_feedback(self.bot.i18n, "uptime_minutes", m=int(b_uptime_sec / 60))
                 
-                bot_config = self.bot.config.get("bots", {}).get(bot_id, {})
-                if bot_config.get("systemd_service"):
-                    status_text = get_feedback(self.bot.i18n, "status_running_systemd")
-                else:
+                b_proc = self.bot.process_manager.managed_processes.get(bot_id)
+                if b_proc and b_proc.is_running():
                     status_text = get_feedback(self.bot.i18n, "status_running")
 
                 bot_entry.update({

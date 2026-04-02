@@ -52,7 +52,6 @@
     "error_admin_context": "Nincs jogosultságod a parancs futtatásához, vagy nem a kijelölt admin csatornában vagy.",
     "error_admin_channel_only": "Ezt csak az admin csatornán lehet használni.",
     "status_running": "Fut",
-    "status_running_systemd": "Fut",
     "status_uncertain": "Állapot bizonytalan (Access Denied)",
     "status_stopped": "Nem fut",
     "status_failed": "Hiba (Failed)",
