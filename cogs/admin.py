@@ -17,7 +17,10 @@ async def bot_id_autocomplete(
     bot_manager = interaction.client # The main bot instance (BotManager)
     
     choices = []
-    is_logs_command = interaction.command and interaction.command.name == "logs"
+    # Identify context: Logs usually want individual bots, updates might want groups
+    # We check the command name or even just the provided options to be safe
+    cmd_name = interaction.command.name if interaction.command else ""
+    is_logs_command = "logs" in cmd_name.lower()
     
     # Access the BotConfig objects directly from bot_manager.bots
     bots_data = bot_manager.bots
@@ -54,10 +57,12 @@ async def bot_id_autocomplete(
 class ManagementCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # We apply the command suffix from config.json to our prefix commands
+        # We apply the command suffix as an alias for better reliability
         suffix = getattr(bot, 'command_suffix', '')
-        self.sync_prefix.name = f"sync{suffix}"
-        self.clear_commands_prefix.name = f"clear_commands{suffix}"
+        if suffix:
+            self.sync_prefix.aliases = [f"sync{suffix}"]
+            self.clear_commands_prefix.aliases = [f"clear_commands{suffix}"]
+            log.info(f"[Admin] Registered prefix aliases for suffix: {suffix}")
 
     @app_commands.command(name="update", description="[Bot Dev] Update and restart a bot by ID.")
     @app_commands.describe(bot_id="The ID of the bot to update")
