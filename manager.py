@@ -386,7 +386,13 @@ class BotManager(commands.Bot):
             await ctx.send(msg)
             return
 
-        log.error(f"Error in prefix command {ctx.command}: {error}")
+        log.error(f"Error in prefix command {ctx.command if ctx.command else 'Unknown'}: {error}")
+        # Try to send a generic error feedback if it wasn't a recognized check failure
+        try:
+            msg = f"{Icons.ERROR} Hiba történt: `{str(error)}`"
+            await ctx.send(msg)
+        except:
+            pass
 
     @tasks.loop(seconds=60)
     async def check_processes(self):

@@ -2,7 +2,11 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
+import logging
 from core.icons import Icons
+
+# Setup logger for utilities
+log = logging.getLogger("BotManager")
 
 def get_feedback(i18n, key: str, **kwargs) -> str:
     """
