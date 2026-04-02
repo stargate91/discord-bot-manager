@@ -376,7 +376,9 @@ class BotManager(commands.Bot):
     async def on_command_error(self, ctx, error):
         """Global error handler for prefix commands."""
         if isinstance(error, commands.CommandNotFound):
-            return # Ignore unknown commands
+            # Log unrecognized commands to help debug suffix issues
+            log.warning(f"Unrecognized command attempted: {ctx.message.content} from {ctx.author}")
+            return # Ignore unknown commands visually in Discord, but log locally
             
         if isinstance(error, commands.CheckFailure):
             log.warning(f"Check failed for user {ctx.author} on command {ctx.command}: {error}")

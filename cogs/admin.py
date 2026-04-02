@@ -57,12 +57,11 @@ async def bot_id_autocomplete(
 class ManagementCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # We apply the command suffix as an alias for better reliability
-        suffix = getattr(bot, 'command_suffix', '')
-        if suffix:
-            self.sync_prefix.aliases = [f"sync{suffix}"]
-            self.clear_commands_prefix.aliases = [f"clear_commands{suffix}"]
-            log.info(f"[Admin] Registered prefix aliases for suffix: {suffix}")
+
+    @commands.command(name="ping")
+    async def ping_prefix(self, ctx: commands.Context):
+        """[Bot Dev] Simple connectivity check."""
+        await ctx.send(f"🏓 Pong! (Latency: {round(self.bot.latency * 1000)}ms)")
 
     @app_commands.command(name="update", description="[Bot Dev] Update and restart a bot by ID.")
     @app_commands.describe(bot_id="The ID of the bot to update")
@@ -414,4 +413,14 @@ class ManagementCog(commands.Cog):
             await interaction.followup.send(msg, ephemeral=True)
 
 async def setup(bot):
-    await bot.add_cog(ManagementCog(bot))
+    cog = ManagementCog(bot)
+    suffix = getattr(bot, 'command_suffix', '')
+    if suffix:
+        # We set aliases on the command objects before adding the cog to the bot.
+        # This ensures discord.py registers them correctly in its internal map.
+        cog.sync_prefix.aliases = [f"sync{suffix}"]
+        cog.clear_commands_prefix.aliases = [f"clear_commands{suffix}"]
+        cog.ping_prefix.aliases = [f"ping{suffix}"]
+        log.info(f"[Admin] Dynamic aliases prepared for suffix: {suffix}")
+        
+    await bot.add_cog(cog)
