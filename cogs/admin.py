@@ -334,7 +334,9 @@ class ManagementCog(commands.Cog):
             msg = get_feedback(self.bot.i18n, "sync_success_copy", count=len(synced))
             await ctx.send(msg)
         else:
-            # Sync only to this guild (immediate)
+            # Sync only to this guild (instant)
+            log.info(f"[Sync] Attempting guild sync for {ctx.guild.id}...")
+            await ctx.send(f"{Icons.WRENCH} Szinkronizálás folyamatban...")
             synced = await self.bot.tree.sync(guild=ctx.guild)
             msg = get_feedback(self.bot.i18n, "sync_success_guild", count=len(synced))
             await ctx.send(msg)
@@ -344,10 +346,9 @@ class ManagementCog(commands.Cog):
     @is_admin_prefix_context()
     async def clear_commands_prefix(self, ctx: commands.Context):
         """[Admin] Emergency clear of all slash commands."""
-        admin_channel_id = getattr(self.bot, 'admin_channel_id', None)
-        if admin_channel_id and str(ctx.channel.id) != str(admin_channel_id):
-            return
-
+        log.info(f"[Clear] User {ctx.author} requested slash command purge.")
+        await ctx.send(f"{Icons.WRENCH} Parancsok törlése folyamatban... Ez eltarthat egy ideig.")
+        
         # Clear Global
         self.bot.tree.clear_commands(guild=None)
         await self.bot.tree.sync(guild=None)
@@ -355,6 +356,7 @@ class ManagementCog(commands.Cog):
         self.bot.tree.clear_commands(guild=ctx.guild)
         await self.bot.tree.sync(guild=ctx.guild)
         
+        log.info("[Clear] Slash commands cleared successfully.")
         await ctx.send(get_feedback(self.bot.i18n, "clear_commands_success"))
 
     @app_commands.command(name="sync", description="[Bot Dev] Sync slash commands manually.")
