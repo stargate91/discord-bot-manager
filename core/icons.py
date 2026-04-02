@@ -9,9 +9,7 @@ class Icons:
     CHART: discord.PartialEmoji = None
     ROCKET: discord.PartialEmoji = None
     SUCCESS: discord.PartialEmoji = None
-    TRASH: discord.PartialEmoji = None
     CONTROLLER: discord.PartialEmoji = None
-    STATS: discord.PartialEmoji = None
     COMMUNITY: discord.PartialEmoji = None
     ERROR: discord.PartialEmoji = None
     WARNING: discord.PartialEmoji = None
@@ -72,8 +70,8 @@ class Icons:
             "restart": "🔄", 
             "update": "🆙", 
             "stop": "⏹️",
-            "CHART": "📊", "ROCKET": "🚀", "SUCCESS": "✅", "TRASH": "🗑️",
-            "CONTROLLER": "🎮", "STATS": "📈", "COMMUNITY": "🤝", "ERROR": "❌",
+            "CHART": "📊", "ROCKET": "🚀", "SUCCESS": "✅",
+            "CONTROLLER": "🎮", "COMMUNITY": "🤝", "ERROR": "❌",
             "WARNING": "⚠️", "TOOLS": "🛠️", "LIGHTNING": "⚡", 
             "COOLDOWN": "⏳", "HELP": "🆘",
             "ALERT": "🚨", "LOG": "📄", "PACKAGE": "📦", "SHIELD": "🛡️", "ROLLBACK": "⏮️",
@@ -119,8 +117,8 @@ class Icons:
         # Define all supported icon keys (mapping to class attributes)
         # We handle the legacy lowercase ones (restart, update, stop) by mapping them to their uppercase counterparts
         all_keys = [
-            "RESTART", "UPDATE", "STOP", "CHART", "ROCKET", "SUCCESS", "TRASH", 
-            "CONTROLLER", "STATS", "COMMUNITY", "ERROR", "WARNING", "TOOLS", 
+            "RESTART", "UPDATE", "STOP", "CHART", "ROCKET", "SUCCESS", 
+            "CONTROLLER", "COMMUNITY", "ERROR", "WARNING", "TOOLS", 
             "LIGHTNING", "COOLDOWN", "HELP", "ALERT", "LOG", "PACKAGE", "SHIELD", 
             "ROLLBACK", "DOT_GREEN", "DOT_RED", "DOT_YELLOW", "UP", "DOWN", "CHAIN",
             "WRENCH", "GEAR", "WAVE", "ACTIVITY_UP", "ACTIVITY_DOWN"
