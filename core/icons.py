@@ -12,7 +12,6 @@ class Icons:
     CONTROLLER: discord.PartialEmoji = None
     ERROR: discord.PartialEmoji = None
     WARNING: discord.PartialEmoji = None
-    HELP: discord.PartialEmoji = None
     
     # New Visual Elements
     ALERT: discord.PartialEmoji = None
@@ -67,7 +66,7 @@ class Icons:
             "stop": "⏹️",
             "CHART": "📊", "ROCKET": "🚀", "SUCCESS": "✅",
             "CONTROLLER": "🎮", "ERROR": "❌",
-            "WARNING": "⚠️", "HELP": "🆘",
+            "WARNING": "⚠️",
             "ALERT": "🚨", "LOG": "📄", "PACKAGE": "📦", "SHIELD": "🛡️", "ROLLBACK": "⏮️",
             "DOT_GREEN": "🟢", "DOT_RED": "🔴", "DOT_YELLOW": "🟡",
             "UP": "⬆️", "DOWN": "⬇️",
@@ -112,7 +111,7 @@ class Icons:
         # We handle the legacy lowercase ones (restart, update, stop) by mapping them to their uppercase counterparts
         all_keys = [
             "RESTART", "UPDATE", "STOP", "CHART", "ROCKET", "SUCCESS", 
-            "CONTROLLER", "ERROR", "WARNING", "HELP", "ALERT", "LOG", "PACKAGE", "SHIELD", 
+            "CONTROLLER", "ERROR", "WARNING", "ALERT", "LOG", "PACKAGE", "SHIELD", 
             "ROLLBACK", "DOT_GREEN", "DOT_RED", "DOT_YELLOW", "UP", "DOWN",
             "WRENCH", "GEAR", "WAVE", "ACTIVITY_UP", "ACTIVITY_DOWN"
         ]
