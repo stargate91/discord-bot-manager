@@ -162,7 +162,7 @@ class BotManager(commands.Bot):
             if key == "activity_maintenance":
                 kwargs["count"] = len(self.bots)
             elif key == "activity_resource":
-                kwargs["cpu"] = int(psutil.cpu_percentage())
+                kwargs["cpu"] = int(psutil.cpu_percent())
                 kwargs["ram"] = int(psutil.virtual_memory().used / (1024 * 1024))
             elif key == "activity_network":
                 # Calculate network delta

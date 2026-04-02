@@ -161,12 +161,16 @@ def get_user_level(user, bot) -> int:
     if hasattr(user, 'roles'):
         role_ids = [str(r.id) for r in user.roles]
         
+        # Use getattr to be safe during migration/initialization
+        admin_role_id = getattr(bot, 'admin_role_id', None)
+        tester_role_id = getattr(bot, 'tester_role_id', None)
+        
         # MECHANIC: Has the admin role
-        if bot.admin_role_id and str(bot.admin_role_id) in role_ids:
+        if admin_role_id and str(admin_role_id) in role_ids:
             return AccessLevel.MECHANIC
             
         # INSPECTOR: Has the tester role
-        if bot.tester_role_id and str(bot.tester_role_id) in role_ids:
+        if tester_role_id and str(tester_role_id) in role_ids:
             return AccessLevel.INSPECTOR
             
     return AccessLevel.EVERYONE
