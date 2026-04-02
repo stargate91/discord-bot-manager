@@ -250,7 +250,7 @@ class StatusContainer(Container):
             f"> {get_feedback(i18n, 'uptime')}: {manager_stats['uptime']} | {server_up_label}: {manager_stats['host_uptime']}\n"
             f"> {get_feedback(i18n, 'branch')}: `{manager_stats['branch']}`\n"
             f"> {host_label}: `{manager_stats['os']}`\n"
-            f"> {get_feedback(i18n, 'resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB` | Net: {manager_stats['net']}\n"
+            f"> {get_feedback(i18n, 'resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB` | Net: `{manager_stats['net']}`\n"
             f"> {free_label}: CPU: `{int(manager_stats['sys_cpu_free'])}%` | {ram_label}: `{int(manager_stats['sys_ram_free'])} MB` | {disk_label}: `{int(manager_stats['sys_disk_free'])} GB` | {swap_label}: `{manager_stats['swap']}%`"
         )
         self.add_item(TextDisplay(manager_text))

@@ -264,8 +264,8 @@ class MonitoringCog(commands.Cog):
                     return f"{bytes_per_sec / (1024*1024):.1f} MB/s"
                 return f"{bytes_per_sec / 1024:.1f} KB/s"
             
-            up_icon = str(Icons.UP) if Icons.UP else "↑"
-            down_icon = str(Icons.DOWN) if Icons.DOWN else "↓"
+            up_icon = str(Icons.ACTIVITY_UP) if Icons.ACTIVITY_UP else "↑"
+            down_icon = str(Icons.ACTIVITY_DOWN) if Icons.ACTIVITY_DOWN else "↓"
             net_str = f"{down_icon} {format_speed(down_speed)} | {up_icon} {format_speed(up_speed)}"
 
         except Exception as e:
