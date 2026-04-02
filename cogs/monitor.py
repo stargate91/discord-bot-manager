@@ -156,9 +156,9 @@ class MonitoringCog(commands.Cog):
                     log.warning(f"[Status] Failed to cleanup old status message: {e}")
 
             # 2. Create the new panel
-            admin_channel_id = self.bot.config.get("settings", {}).get("admin_channel_id")
+            admin_channel_id = self.bot.admin_channel_id
             if not admin_channel_id:
-                log.error("[Status] No admin_channel_id found in config. Cannot create status panel.")
+                log.error("[Status] No admin_channel_id found. Cannot create status panel.")
                 return
 
             try:
