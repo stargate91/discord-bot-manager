@@ -49,7 +49,6 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         # --- Network / System ---
         "UP": Icons.UP,
         "DOWN": Icons.DOWN,
-        "CHAIN": Icons.CHAIN,
         "manager_update_success": Icons.SUCCESS,
         "manager_restart_msg": Icons.LIGHTNING,
         "manager_updating": Icons.UPDATE,

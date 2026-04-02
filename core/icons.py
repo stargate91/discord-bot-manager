@@ -25,7 +25,6 @@ class Icons:
     DOT_YELLOW: discord.PartialEmoji = None
     UP: discord.PartialEmoji = None
     DOWN: discord.PartialEmoji = None
-    CHAIN: discord.PartialEmoji = None
     WRENCH: discord.PartialEmoji = None
     GEAR: discord.PartialEmoji = None
     WAVE: discord.PartialEmoji = None
@@ -71,7 +70,7 @@ class Icons:
             "WARNING": "⚠️", "HELP": "🆘",
             "ALERT": "🚨", "LOG": "📄", "PACKAGE": "📦", "SHIELD": "🛡️", "ROLLBACK": "⏮️",
             "DOT_GREEN": "🟢", "DOT_RED": "🔴", "DOT_YELLOW": "🟡",
-            "UP": "⬆️", "DOWN": "⬇️", "CHAIN": "⛓️",
+            "UP": "⬆️", "DOWN": "⬇️",
             "WRENCH": "🔧", "GEAR": "⚙️", "WAVE": "📶",
             "ACTIVITY_UP": "⬆️", "ACTIVITY_DOWN": "⬇️"
         }
@@ -114,7 +113,7 @@ class Icons:
         all_keys = [
             "RESTART", "UPDATE", "STOP", "CHART", "ROCKET", "SUCCESS", 
             "CONTROLLER", "ERROR", "WARNING", "HELP", "ALERT", "LOG", "PACKAGE", "SHIELD", 
-            "ROLLBACK", "DOT_GREEN", "DOT_RED", "DOT_YELLOW", "UP", "DOWN", "CHAIN",
+            "ROLLBACK", "DOT_GREEN", "DOT_RED", "DOT_YELLOW", "UP", "DOWN",
             "WRENCH", "GEAR", "WAVE", "ACTIVITY_UP", "ACTIVITY_DOWN"
         ]
         
