@@ -14,7 +14,7 @@ from core.utils import get_feedback
 class BotControlButton(discord.ui.Button):
     def __init__(self, style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):
         # Debug: log the emoji object
-        log.info(f"[UI] Creating button for {bot_id}:{action} with emoji: {emoji} (Type: {type(emoji)})")
+        log.debug(f"[UI] Creating button for {bot_id}:{action} with emoji: {emoji} (Type: {type(emoji)})")
         # Custom IDs for state persistence and clean emoji-only buttons
         cid = f"status:{bot_id}:{action}"
         super().__init__(style=style, label=None, emoji=emoji, custom_id=cid)
@@ -137,7 +137,7 @@ async def handle_status_interaction(interaction: discord.Interaction, bot_id: st
             try:
                 monitor = bot.get_cog('MonitoringCog')
                 if monitor and monitor.status_message_id:
-                    log.info(f"[CleanRestart] Deleting old panel {monitor.status_message_id} before restart...")
+                    log.debug(f"[CleanRestart] Deleting old panel {monitor.status_message_id} before restart...")
                     channel = bot.get_channel(int(monitor.status_channel_id))
                     if not channel:
                         channel = await bot.fetch_channel(int(monitor.status_channel_id))
@@ -145,7 +145,7 @@ async def handle_status_interaction(interaction: discord.Interaction, bot_id: st
                         try:
                             old_msg = await channel.fetch_message(int(monitor.status_message_id))
                             await old_msg.delete()
-                            log.info("[CleanRestart] Old panel deleted successfully.")
+                            log.debug("[CleanRestart] Old panel deleted successfully.")
                         except discord.NotFound:
                             pass
             except Exception as e:

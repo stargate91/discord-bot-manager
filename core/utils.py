@@ -230,16 +230,16 @@ def is_admin_prefix_context():
     async def predicate(ctx: commands.Context) -> bool:
         bot = ctx.bot
         level = get_user_level(ctx.author, bot)
-        log.info(f"[Prefix] Check for user {ctx.author} (Level: {level}) in channel {ctx.channel.id}")
+        log.debug(f"[Prefix] Check for user {ctx.author} (Level: {level}) in channel {ctx.channel.id}")
         
         if level == AccessLevel.BOSS: return True
         
         if bot.admin_channel_id and str(ctx.channel.id) == str(bot.admin_channel_id):
             res = level >= AccessLevel.MECHANIC
-            if not res: log.warning(f"[Prefix] Denied: Level {level} < MECHANIC in Admin channel.")
+            if not res: log.debug(f"[Prefix] Denied: Level {level} < MECHANIC in Admin channel.")
             return res
             
-        log.warning(f"[Prefix] Denied: Invalid channel or level for Admin command.")
+        log.debug(f"[Prefix] Denied: Invalid channel or level for Admin command.")
         return False
     return commands.check(predicate)
 
@@ -248,7 +248,7 @@ def is_monitor_prefix_context():
     async def predicate(ctx: commands.Context) -> bool:
         bot = ctx.bot
         level = get_user_level(ctx.author, bot)
-        log.info(f"[Prefix-Mon] Check for user {ctx.author} (Level: {level}) in channel {ctx.channel.id}")
+        log.debug(f"[Prefix-Mon] Check for user {ctx.author} (Level: {level}) in channel {ctx.channel.id}")
         
         if level == AccessLevel.BOSS: return True
         
@@ -256,9 +256,9 @@ def is_monitor_prefix_context():
         if (bot.admin_channel_id and channel_id == str(bot.admin_channel_id)) or \
            (bot.public_channel_id and channel_id == str(bot.public_channel_id)):
             res = level >= AccessLevel.INSPECTOR
-            if not res: log.warning(f"[Prefix-Mon] Denied: Level {level} < INSPECTOR.")
+            if not res: log.debug(f"[Prefix-Mon] Denied: Level {level} < INSPECTOR.")
             return res
             
-        log.warning(f"[Prefix-Mon] Denied: Invalid channel.")
+        log.debug(f"[Prefix-Mon] Denied: Invalid channel.")
         return False
     return commands.check(predicate)
