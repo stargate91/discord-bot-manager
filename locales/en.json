@@ -52,7 +52,7 @@
     "error_admin_context": "You do not have permission or are in the wrong channel.",
     "error_admin_channel_only": "This can only be used in the admin channel.",
     "status_running": "Running",
-    "status_running_systemd": "Running (Systemd)",
+    "status_running_systemd": "Running",
     "status_uncertain": "Status Uncertain (Access Denied)",
     "status_stopped": "Not Running",
     "status_failed": "Failed",
