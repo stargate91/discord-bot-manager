@@ -60,7 +60,6 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "status_refreshed": Icons.SUCCESS,
         "status_ok": Icons.SUCCESS,
         "status_error_prefix": Icons.ERROR,
-        "status_restarting": Icons.LIGHTNING,
         "status_stopping": Icons.WARNING,
         "status_running": Icons.DOT_GREEN,
         "status_running_systemd": Icons.DOT_GREEN,
