@@ -85,35 +85,44 @@ class MonitoringCog(commands.Cog):
     @tasks.loop(minutes=10)
     async def git_fetch_task(self):
         """Periodically runs git fetch for all bots to check for updates."""
-        log.info("[Status] Checking for Git updates...")
+        log.info("[Git] Checking for updates...")
         
         # Check Manager itself
-        manager_path = os.path.dirname(os.path.abspath(__file__))
-        # Correction: Manager is in the root, cogs/ is a subdir
-        manager_path = os.path.dirname(manager_path)
-        self.git_behind_status["manager"] = await self.check_if_behind(manager_path)
+        manager_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        branch = self.bot.config.get("bot_settings", {}).get("git_branch", "origin/main")
+        self.git_behind_status["manager"] = await self.check_if_behind(manager_path, branch)
         
         # Check Managed Bots
         for bot_id, bot_config in self.bot.bots.items():
-            self.git_behind_status[bot_id] = await self.check_if_behind(bot_config.path)
+            # Use same branch for bots or customize if needed
+            self.git_behind_status[bot_id] = await self.check_if_behind(bot_config.path, branch)
 
-    async def check_if_behind(self, path):
+    async def check_if_behind(self, path, branch="origin/main"):
         """Checks if a git repo is behind its remote."""
         try:
             # 1. Fetch from remote
-            await asyncio.to_thread(subprocess.run, ["git", "fetch"], cwd=path, check=False, capture_output=True)
+            fetch_res = await asyncio.to_thread(subprocess.run, ["git", "fetch", "--all"], cwd=path, check=False, capture_output=True, text=True)
+            if fetch_res.returncode != 0:
+                log.debug(f"[Git] Fetch failed for {path}: {fetch_res.stderr.strip()}")
+                return False
+
             # 2. Count commits behind
-            # git rev-list --count HEAD..@{u}
+            # git rev-list --count HEAD..origin/main
             result = await asyncio.to_thread(
                 subprocess.run, 
-                ["git", "rev-list", "--count", "HEAD..@{u}"], 
+                ["git", "rev-list", "--count", f"HEAD..{branch}"], 
                 cwd=path, capture_output=True, text=True, check=False
             )
+            
             if result.returncode == 0:
                 count = int(result.stdout.strip())
-                return count > 0
-        except Exception:
-            pass
+                if count > 0:
+                    log.info(f"[Git] Update detected for {path}: {count} commit(s) behind {branch}")
+                    return True
+            else:
+                log.debug(f"[Git] rev-list failed for {path}: {result.stderr.strip()}")
+        except Exception as e:
+            log.error(f"[Git] Error checking updates for {path}: {e}")
         return False
 
     async def cleanup_and_recreate_panel(self, triggered_by_id=None):
