@@ -59,15 +59,11 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "status_refreshed": Icons.SUCCESS,
         "status_ok": Icons.SUCCESS,
         "status_error_prefix": Icons.ERROR,
-        "status_stopping": Icons.WARNING,
         "status_running": Icons.DOT_GREEN,
         "status_running_systemd": Icons.DOT_GREEN,
         "status_uncertain": Icons.DOT_YELLOW,
         "status_stopped": Icons.DOT_RED,
         "status_failed": Icons.DOT_RED,
-        "manager_status_header": "",
-        "bots_status_header": "",
-        "manager_status_line": "",
         "bot_status_line": "",
         
         # --- System & Resources ---
@@ -110,9 +106,6 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "pip_error": "",
 
         # --- Buttons & Actions ---
-        "refresh": "",
-        "btn_restart": "",
-        "btn_update": "",
         "btn_stop": "",
         "open_on_web": "",
         "purge_confirm": "",
