@@ -43,10 +43,10 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "bot_stopped_alert": Icons.ALERT,
         "status_uncertain": Icons.ALERT,
 
-        # --- Success (✅) : Positive feedback ---
+        # --- Success (🚀/✅) : Positive feedback ---
         "success_generic": Icons.SUCCESS,
-        "update_success": Icons.SUCCESS,
-        "restart_success": Icons.SUCCESS,
+        "update_success": Icons.ROCKET,
+        "restart_success": Icons.ROCKET,
         "status_ok": Icons.SUCCESS,
         "sync_success_global": Icons.SUCCESS,
         "sync_success_copy": Icons.SUCCESS,
@@ -54,9 +54,18 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "clear_commands_success": Icons.SUCCESS,
         "purge_success": Icons.SUCCESS,
         "manager_update_success": Icons.SUCCESS,
-        "update_result_title": Icons.SUCCESS,
-        "manager_updated_title": Icons.SUCCESS,
-        "bot_updated_title": Icons.SUCCESS,
+        # --- Headers & UI Labels ---
+        "manager_status_header": Icons.CHART,
+        "bots_status_header": Icons.CONTROLLER,
+        "logs_header": Icons.LOG,
+        "logs_full_header": Icons.LOG,
+        "manager_logs_header": Icons.LOG,
+        "manager_logs_full_header": Icons.LOG,
+        "update_result_title": Icons.CHART,
+        "manager_updated_title": Icons.ROCKET,
+        "bot_updated_title": Icons.ROCKET,
+        "bot_rollback_title": Icons.ROLLBACK,
+        "update_footer": Icons.SUCCESS,
 
         # --- Administrative (🛡️) : Permissions / Protection ---
         "error_admin_only": Icons.SHIELD,
@@ -85,18 +94,13 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "DOT_RED": Icons.DOT_RED,
         "DOT_YELLOW": Icons.DOT_YELLOW,
 
-        # --- UI Labels & Mappings ---
-        "logs_header": Icons.LOG,
-        "logs_full_header": Icons.LOG,
-        "manager_logs_header": Icons.LOG,
-        "manager_logs_full_header": Icons.LOG,
+        # --- Bot & Manager States ---
         "manager_restart_msg": Icons.RESTART,
         "manager_updating": Icons.UPDATE,
         "pip_updated": Icons.PACKAGE,
         "pip_deps": Icons.PACKAGE,
         "bot_restarted_log": Icons.ROCKET,
         "bot_online_log": Icons.ROCKET,
-        "bot_rollback_title": Icons.ROLLBACK,
         "status_restarting": Icons.RESTART,
         "status_stopping": Icons.STOP,
         "status_running": Icons.DOT_GREEN,
