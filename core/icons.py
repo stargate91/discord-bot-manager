@@ -17,6 +17,7 @@ class Icons:
     LOG: discord.PartialEmoji = None
     PACKAGE: discord.PartialEmoji = None
     SHIELD: discord.PartialEmoji = None
+    SHIELD_LIGHT: discord.PartialEmoji = None
     ROLLBACK: discord.PartialEmoji = None
     DOT_GREEN: discord.PartialEmoji = None
     DOT_RED: discord.PartialEmoji = None
@@ -66,7 +67,7 @@ class Icons:
             "ROCKET": "🚀", "SUCCESS": "✅",
             "CONTROLLER": "🎮", "ERROR": "❌",
             "WARNING": "⚠️",
-            "ALERT": "🚨", "LOG": "📄", "PACKAGE": "📦", "SHIELD": "🛡️", "ROLLBACK": "⏮️",
+            "ALERT": "🚨", "LOG": "📄", "PACKAGE": "📦", "SHIELD": "🛡️", "SHIELD_LIGHT": "🛡️", "ROLLBACK": "⏮️",
             "DOT_GREEN": "🟢", "DOT_RED": "🔴", "DOT_YELLOW": "🟡",
             "UP": "⬆️", "DOWN": "⬇️",
             "WRENCH": "🔧", "GEAR": "⚙️", "WAVE": "📶",
@@ -112,7 +113,7 @@ class Icons:
             "RESTART", "UPDATE", "STOP", "ROCKET", "SUCCESS", 
             "CONTROLLER", "ERROR", "WARNING", "ALERT", "LOG", "PACKAGE", "SHIELD", 
             "ROLLBACK", "DOT_GREEN", "DOT_RED", "DOT_YELLOW", "UP", "DOWN",
-            "WRENCH", "GEAR", "WAVE", "ACTIVITY_UP", "ACTIVITY_DOWN"
+            "WRENCH", "GEAR", "WAVE", "ACTIVITY_UP", "ACTIVITY_DOWN", "SHIELD_LIGHT"
         ]
         
         for key in all_keys:

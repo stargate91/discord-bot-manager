@@ -68,10 +68,10 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "update_footer": Icons.SUCCESS,
 
         # --- Administrative (🛡️) : Permissions / Protection ---
-        "error_admin_only": Icons.SHIELD,
-        "error_admin_context": Icons.SHIELD,
-        "error_admin_channel_only": Icons.SHIELD,
-        "manager_online_log": Icons.SHIELD,
+        "error_admin_only": Icons.SHIELD_LIGHT,
+        "error_admin_context": Icons.SHIELD_LIGHT,
+        "error_admin_channel_only": Icons.SHIELD_LIGHT,
+        "manager_online_log": Icons.SHIELD_LIGHT,
         "activity_status": Icons.SHIELD,
 
         # --- Functional Icons (Buttons / System) ---
@@ -94,7 +94,7 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "DOT_YELLOW": Icons.DOT_YELLOW,
 
         # --- Bot & Manager States ---
-        "manager_restart_msg": Icons.RESTART,
+        "manager_restart_msg": Icons.SHIELD_LIGHT,
         "manager_updating": Icons.UPDATE,
         "pip_updated": Icons.PACKAGE,
         "pip_deps": "",
