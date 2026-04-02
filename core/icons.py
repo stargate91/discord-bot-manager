@@ -6,7 +6,6 @@ class Icons:
     STOP: discord.PartialEmoji = None
     
     # Standard UI Icons (consistent with Watcher Bot)
-    CHART: discord.PartialEmoji = None
     ROCKET: discord.PartialEmoji = None
     SUCCESS: discord.PartialEmoji = None
     CONTROLLER: discord.PartialEmoji = None
@@ -64,7 +63,7 @@ class Icons:
             "restart": "🔄", 
             "update": "🆙", 
             "stop": "⏹️",
-            "CHART": "📊", "ROCKET": "🚀", "SUCCESS": "✅",
+            "ROCKET": "🚀", "SUCCESS": "✅",
             "CONTROLLER": "🎮", "ERROR": "❌",
             "WARNING": "⚠️",
             "ALERT": "🚨", "LOG": "📄", "PACKAGE": "📦", "SHIELD": "🛡️", "ROLLBACK": "⏮️",
@@ -110,7 +109,7 @@ class Icons:
         # Define all supported icon keys (mapping to class attributes)
         # We handle the legacy lowercase ones (restart, update, stop) by mapping them to their uppercase counterparts
         all_keys = [
-            "RESTART", "UPDATE", "STOP", "CHART", "ROCKET", "SUCCESS", 
+            "RESTART", "UPDATE", "STOP", "ROCKET", "SUCCESS", 
             "CONTROLLER", "ERROR", "WARNING", "ALERT", "LOG", "PACKAGE", "SHIELD", 
             "ROLLBACK", "DOT_GREEN", "DOT_RED", "DOT_YELLOW", "UP", "DOWN",
             "WRENCH", "GEAR", "WAVE", "ACTIVITY_UP", "ACTIVITY_DOWN"
