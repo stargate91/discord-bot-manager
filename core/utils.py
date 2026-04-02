@@ -56,7 +56,7 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "manager_update_success": Icons.SUCCESS,
         # --- Headers & UI Labels ---
         "manager_status_header": Icons.CHART,
-        "bots_status_header": Icons.CONTROLLER,
+        "bots_status_header": "",
         "logs_header": Icons.LOG,
         "logs_full_header": Icons.LOG,
         "manager_logs_header": Icons.LOG,
