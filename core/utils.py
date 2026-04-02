@@ -144,6 +144,7 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "manager_online_log": Icons.SHIELD,
         "manager_updating": Icons.UPDATE,
         "pip_updated": Icons.PACKAGE,
+        "pip_deps": Icons.PACKAGE,
         "bot_restarted_log": Icons.ROCKET,
         "bot_online_log": Icons.ROCKET,
         "status_restarting": Icons.RESTART,
