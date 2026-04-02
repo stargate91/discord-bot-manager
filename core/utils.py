@@ -50,7 +50,7 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "UP": Icons.UP,
         "DOWN": Icons.DOWN,
         "manager_update_success": Icons.SUCCESS,
-        "manager_restart_msg": Icons.LIGHTNING,
+        "manager_restart_msg": Icons.RESTART,
         "manager_updating": Icons.UPDATE,
         "update_result_title": Icons.SUCCESS,
         "manager_updated_title": Icons.SUCCESS,
