@@ -124,7 +124,7 @@ class ManagementCog(commands.Cog):
         await interaction.response.defer(ephemeral=False)
         
         if bot_id not in self.bot.bots:
-            await interaction.followup.send(get_feedback(self.bot.i18n, "error_unknown_bot"), ephemeral=False)
+            await interaction.followup.send(get_feedback(self.bot.i18n, "error_unknown_bot"), ephemeral=True)
             return
             
         bot = self.bot.bots[bot_id]
@@ -140,25 +140,27 @@ class ManagementCog(commands.Cog):
                     
                     content = "".join(last_lines)
                     if not content:
-                        await interaction.followup.send(get_feedback(self.bot.i18n, "error_log_empty"), ephemeral=False)
+                        await interaction.followup.send(get_feedback(self.bot.i18n, "error_log_empty"), ephemeral=True)
                         return
 
                     temp_file = "temp_logs.txt"
                     with open(temp_file, "w", encoding="utf-8") as f:
                         f.write(content)
                     
-                    file = discord.File(temp_file, filename=f"{bot.name}_last_{lines}_lines.txt")
-                    header = get_feedback(self.bot.i18n, "logs_header", name=bot.name, lines=lines)
-                    await interaction.followup.send(header, file=file, ephemeral=False)
+                    file = discord.File(temp_file, filename=f"{bot.name}_logs.txt")
+                    header = get_feedback(self.bot.i18n, "log_fetch_header", name=bot.name, count=lines)
+                    await interaction.followup.send(header, file=file, ephemeral=True)
+                    
+                    # Cleanup temp file
                     os.remove(temp_file)
                 else:
                     file = discord.File(log_path, filename=f"{bot.name}_full_logs.txt")
                     header = get_feedback(self.bot.i18n, "logs_full_header", name=bot.name)
-                    await interaction.followup.send(header, file=file, ephemeral=False)
+                    await interaction.followup.send(header, file=file, ephemeral=True)
             except Exception as e:
-                await interaction.followup.send(get_feedback(self.bot.i18n, "error_log_fetch", error=str(e)), ephemeral=False)
+                await interaction.followup.send(get_feedback(self.bot.i18n, "error_log_fetch", error=str(e)), ephemeral=True)
         else:
-            await interaction.followup.send(get_feedback(self.bot.i18n, "error_log_not_found", path=log_path), ephemeral=False)
+            await interaction.followup.send(get_feedback(self.bot.i18n, "error_log_not_found", path=log_path), ephemeral=True)
 
     @app_commands.command(name="manager-logs", description="[Bot Dev] Get last N lines of the Bot Manager log.")
     @app_commands.describe(lines="Number of lines")
@@ -180,7 +182,7 @@ class ManagementCog(commands.Cog):
                     
                     content = "".join(last_lines)
                     if not content:
-                        await interaction.followup.send(get_feedback(self.bot.i18n, "error_manager_log_empty"), ephemeral=False)
+                        await interaction.followup.send(get_feedback(self.bot.i18n, "error_manager_log_empty"), ephemeral=True)
                         return
 
                     temp_file = "temp_manager_logs.txt"
@@ -196,9 +198,9 @@ class ManagementCog(commands.Cog):
                     header = get_feedback(self.bot.i18n, "manager_logs_full_header")
                     await interaction.followup.send(header, file=file, ephemeral=False)
             except Exception as e:
-                await interaction.followup.send(self.bot.i18n.get("error_log_fetch", "Error fetching logs: {error}", error=str(e)), ephemeral=False)
+                await interaction.followup.send(self.bot.i18n.get("error_log_fetch", "Error fetching logs: {error}", error=str(e)), ephemeral=True)
         else:
-            await interaction.followup.send(get_feedback(self.bot.i18n, "error_manager_log_not_found"), ephemeral=False)
+            await interaction.followup.send(get_feedback(self.bot.i18n, "error_manager_log_not_found"), ephemeral=True)
 
     @app_commands.command(name="manager-restart", description="[Bot Dev] Immediate restart of Bot Manager.")
     @is_admin_context()
@@ -254,7 +256,7 @@ class ManagementCog(commands.Cog):
             
             if not success:
                 msg = get_feedback(self.bot.i18n, "error_update_failed_output", output=output)
-                await interaction.followup.send(msg, ephemeral=False)
+                await interaction.followup.send(msg, ephemeral=True)
                 return
 
             if not changed:
@@ -309,7 +311,7 @@ class ManagementCog(commands.Cog):
 
         except Exception as e:
             log.error(f"Manager update failed: {e}")
-            await interaction.followup.send(get_feedback(self.bot.i18n, "error_update_general", error=str(e)), ephemeral=False)
+            await interaction.followup.send(get_feedback(self.bot.i18n, "error_update_general", error=str(e)), ephemeral=True)
 
     @commands.command(name="sync")
     @commands.guild_only()
