@@ -61,9 +61,9 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "logs_full_header": Icons.LOG,
         "manager_logs_header": Icons.LOG,
         "manager_logs_full_header": Icons.LOG,
-        "update_result_title": "",
-        "manager_updated_title": Icons.ROCKET,
-        "bot_updated_title": Icons.ROCKET,
+        "update_result_title": Icons.SUCCESS,
+        "manager_updated_title": Icons.SUCCESS,
+        "bot_updated_title": Icons.SUCCESS,
         "bot_rollback_title": Icons.ROLLBACK,
         "update_footer": Icons.SUCCESS,
 
