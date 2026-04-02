@@ -1,5 +1,9 @@
 {
     "activity_text": "Pórázon tartok {count} botot...",
+    "activity_maintenance": "Csavarok meghúzása {count} boton...",
+    "activity_resource": "Műhely: {cpu}% CPU | {ram}MB RAM",
+    "activity_network": "Zaj a hálózaton: {ACTIVITY_DOWN} {down} | {ACTIVITY_UP} {up}",
+    "activity_status": "Minden alrendszer stabil. Neural-link OK.",
     "bot_stopped_alert": "A(z) **{name}** ({id}) hirtelen leállt!\nSzeretnéd, hogy újraindítsam? Használd a `/restart bot_id:{id}` parancsot.",
     "manager_status_header": "### Manager Állapot",
     "manager_status_line": "- **{name}**: {status} ({uptime}) | CPU: `{cpu}%` | RAM: `{ram} MB`",

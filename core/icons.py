@@ -32,6 +32,11 @@ class Icons:
     UP: discord.PartialEmoji = None
     DOWN: discord.PartialEmoji = None
     CHAIN: discord.PartialEmoji = None
+    WRENCH: discord.PartialEmoji = None
+    GEAR: discord.PartialEmoji = None
+    WAVE: discord.PartialEmoji = None
+    ACTIVITY_UP: discord.PartialEmoji = None
+    ACTIVITY_DOWN: discord.PartialEmoji = None
     
     @classmethod
     async def setup_async(cls, bot: discord.Client):
@@ -73,7 +78,9 @@ class Icons:
             "COOLDOWN": "⏳", "HELP": "🆘",
             "ALERT": "🚨", "LOG": "📄", "PACKAGE": "📦", "SHIELD": "🛡️", "ROLLBACK": "⏮️",
             "DOT_GREEN": "🟢", "DOT_RED": "🔴", "DOT_YELLOW": "🟡",
-            "UP": "⬆️", "DOWN": "⬇️", "CHAIN": "⛓️"
+            "UP": "⬆️", "DOWN": "⬇️", "CHAIN": "⛓️",
+            "WRENCH": "🔧", "GEAR": "⚙️", "WAVE": "📶",
+            "ACTIVITY_UP": "⬆️", "ACTIVITY_DOWN": "⬇️"
         }
 
         # Extract provided data from config object or dict
@@ -111,12 +118,12 @@ class Icons:
 
         # Define all supported icon keys (mapping to class attributes)
         # We handle the legacy lowercase ones (restart, update, stop) by mapping them to their uppercase counterparts
-        legacy_map = {"RESTART": "RESTART", "UPDATE": "UPDATE", "STOP": "STOP"}
         all_keys = [
             "RESTART", "UPDATE", "STOP", "CHART", "ROCKET", "SUCCESS", "TRASH", 
             "CONTROLLER", "STATS", "COMMUNITY", "ERROR", "WARNING", "TOOLS", 
             "LIGHTNING", "COOLDOWN", "HELP", "ALERT", "LOG", "PACKAGE", "SHIELD", 
-            "ROLLBACK", "DOT_GREEN", "DOT_RED", "DOT_YELLOW", "UP", "DOWN", "CHAIN"
+            "ROLLBACK", "DOT_GREEN", "DOT_RED", "DOT_YELLOW", "UP", "DOWN", "CHAIN",
+            "WRENCH", "GEAR", "WAVE", "ACTIVITY_UP", "ACTIVITY_DOWN"
         ]
         
         for key in all_keys:

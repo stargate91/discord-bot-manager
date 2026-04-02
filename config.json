@@ -56,7 +56,12 @@
             "DOT_YELLOW": "🟡",
             "UP": "⬆️",
             "DOWN": "⬇️",
-            "CHAIN": "⛓️"
+            "CHAIN": "⛓️",
+            "WRENCH": "🔧",
+            "GEAR": "⚙️",
+            "WAVE": "📶",
+            "ACTIVITY_UP": "⬆️",
+            "ACTIVITY_DOWN": "⬇️"
         }
     },
     "ui_settings": {

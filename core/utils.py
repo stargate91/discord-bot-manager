@@ -150,6 +150,11 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         "bot_online_log": Icons.ROCKET,
         "status_restarting": Icons.RESTART,
         "status_stopping": Icons.STOP,
+        "activity_text": Icons.CONTROLLER,
+        "activity_maintenance": Icons.WRENCH,
+        "activity_resource": Icons.GEAR,
+        "activity_network": Icons.WAVE,
+        "activity_status": Icons.SHIELD,
     }
     
     # Key normalization: try exact match first, then lowercase match
@@ -163,6 +168,14 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         if "error" in lower_key: emoji = Icons.ERROR
         elif "success" in lower_key: emoji = Icons.SUCCESS
         elif "warning" in lower_key: emoji = Icons.WARNING
+    
+    # Inject all icons into kwargs so they can be used as placeholders like {WRENCH} or {UP}
+    for attr in dir(Icons):
+        if not attr.startswith("__") and not callable(getattr(Icons, attr)):
+            icon_val = getattr(Icons, attr)
+            if icon_val is not None:
+                # We use setdefault so we don't override manual kwargs if they exist
+                kwargs.setdefault(attr, str(icon_val))
     
     text = i18n.get(key, **kwargs)
     

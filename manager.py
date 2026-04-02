@@ -4,6 +4,7 @@ import json
 import asyncio
 import datetime
 import subprocess
+import psutil
 
 import discord
 from discord import app_commands
@@ -63,6 +64,9 @@ class BotManager(commands.Bot):
         # We load UI settings for accent colors and timeouts
         self.ui_settings = self.config.get("ui_settings", {})
         self.start_time = datetime.datetime.now()
+        self.activity_index = 0
+        self.last_net_io = psutil.net_io_counters()
+        self.last_net_time = datetime.datetime.now()
         log.info(f"BotManager initialized at {self.start_time} (PID: {os.getpid()})")
         
         # We set up the prefix (like '!') and the 'intents' (permissions)
@@ -132,6 +136,70 @@ class BotManager(commands.Bot):
                 return guild.me.display_name
         # Otherwise, just use its username or a default name
         return self.user.name if self.user else get_feedback(self.i18n, "default_manager_name")
+
+    @tasks.loop(seconds=30)
+    async def update_activity_task(self):
+        """Cycles through different mechanic-themed activities for FixItFixa."""
+        try:
+            activities = [
+                "activity_maintenance",
+                "activity_resource",
+                "activity_network",
+                "activity_status"
+            ]
+            
+            key = activities[self.activity_index % len(activities)]
+            self.activity_index += 1
+            
+            kwargs = {}
+            if key == "activity_maintenance":
+                kwargs["count"] = len(self.bots)
+            elif key == "activity_resource":
+                kwargs["cpu"] = int(psutil.cpu_percentage())
+                kwargs["ram"] = int(psutil.virtual_memory().used / (1024 * 1024))
+            elif key == "activity_network":
+                # Calculate network delta
+                now = datetime.datetime.now()
+                io = psutil.net_io_counters()
+                dt = (now - self.last_net_time).total_seconds()
+                
+                if dt > 0:
+                    down = (io.bytes_recv - self.last_net_io.bytes_recv) / dt
+                    up = (io.bytes_sent - self.last_net_io.bytes_sent) / dt
+                    
+                    def format_bytes(b):
+                        for unit in ['B/s', 'KB/s', 'MB/s']:
+                            if b < 1024: return f"{b:.1f} {unit}"
+                            b /= 1024
+                        return f"{b:.1f} GB/s"
+                        
+                    kwargs["down"] = format_bytes(down)
+                    kwargs["up"] = format_bytes(up)
+                else:
+                    kwargs["down"] = "0 B/s"
+                    kwargs["up"] = "0 B/s"
+                
+                self.last_net_io = io
+                self.last_net_time = now
+            
+            activity_text = get_feedback(self.i18n, key, **kwargs)
+            
+            # The name field for Activity cannot be too long
+            if len(activity_text) > 120:
+                activity_text = activity_text[:117] + "..."
+                
+            await self.change_presence(
+                activity=discord.Activity(
+                    type=discord.ActivityType.watching,
+                    name=activity_text
+                )
+            )
+        except Exception as e:
+            log.error(f"[Activity] Error updating presence: {e}")
+
+    @update_activity_task.before_loop
+    async def before_update_activity_task(self):
+        await self.wait_until_ready()
 
     def load_json(self, file_path):
         """This helper function loads a JSON file and returns a dictionary."""
@@ -253,15 +321,11 @@ class BotManager(commands.Bot):
         
         # We set the bot's activity (what it is 'watching')
         count = len(self.bots)
-        log.info(f"Setting presence for {count} bots...")
-        activity_msg = get_feedback(self.i18n, "activity_text", count=count)
-        
-        activity = discord.Activity(
-            type=discord.ActivityType.watching, 
-            name=activity_msg
-        )
-        await self.change_presence(activity=activity)
         log.info(f"Bot Manager online. Neural-link active. {self.user} ({self.manager_name})")
+        
+        # Start the dynamic activity loop
+        if not self.update_activity_task.is_running():
+            self.update_activity_task.start()
 
         # Check if this was a planned restart/update
         temp_dir = self.config.get("bot_settings", {}).get("temp_dir", "tmp")
