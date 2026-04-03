@@ -299,15 +299,25 @@ class ProcessManager:
         bot_config = self.config.get("bots", {}).get(bot_id)
         systemd_service = bot_config.get("systemd_service") if bot_config else None
 
-        # If it's a systemd service and not tracked, try to find it
-        if systemd_service and (not process or not process.is_running()):
-            pid = self.get_systemd_pid(systemd_service)
-            if pid:
-                try:
-                    process = psutil.Process(pid)
-                    self.managed_processes[bot_id] = process
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    process = None
+        # Proactive Re-discovery: If we lost the process (e.g. after a manager restart), 
+        # try to find it one last time before reporting it as 'Stopped'.
+        if not process or not process.is_running():
+            # 1. Try systemd if applicable
+            if systemd_service:
+                pid = self.get_systemd_pid(systemd_service)
+                if pid:
+                    try:
+                        process = psutil.Process(pid)
+                        self.managed_processes[bot_id] = process
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        process = None
+            
+            # 2. If still not found, try a general discovery (e.g. for standalone bots)
+            if not process or not process.is_running():
+                # We use a localized version of discover_processes to avoid full scan if possible
+                # But for now, a full scan is safest to avoid missing anything
+                self.discover_processes()
+                process = self.managed_processes.get(bot_id)
 
         if not process or not process.is_running():
             return None

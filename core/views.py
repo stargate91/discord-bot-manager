@@ -41,10 +41,14 @@ async def handle_status_interaction(interaction: discord.Interaction, bot_id: st
     required_level = AccessLevel.MECHANIC
     if action == "update" or action.endswith("-update"):
         required_level = AccessLevel.BOSS
+    elif action == "restart" or action.endswith("-restart"):
+        required_level = AccessLevel.INSPECTOR
+    elif action == "stop" or action.endswith("-stop"):
+        required_level = AccessLevel.MECHANIC
     
     # 3. Check Level Permissions
     if level < required_level:
-        msg = get_feedback(i18n, "error_admin_only") if level < AccessLevel.INSPECTOR else "🛡️ Ebhez a művelethez nincs jogosultságod, ellenőr úr!"
+        msg = get_feedback(i18n, "error_admin_only") if level < AccessLevel.INSPECTOR else "🛡️ Ehhez a művelethez nincs jogosultságod, ellenőr úr!"
         await interaction.response.send_message(msg, ephemeral=True)
         return
         
