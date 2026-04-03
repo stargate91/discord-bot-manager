@@ -398,26 +398,11 @@ class MonitoringCog(commands.Cog):
     @app_commands.command(name="info", description="General information about FixItFixa.")
     async def info(self, interaction: discord.Interaction):
         """Displays information about the Bot Manager and its mission."""
-        from core.utils import get_feedback
+        from core.views import ModernInfoView
         
-        embed = discord.Embed(
-            title=get_feedback(self.bot.i18n, "INFO_TITLE", bot_name=self.bot.manager_name),
-            description=get_feedback(self.bot.i18n, "INFO_DESC", bot_name=self.bot.manager_name),
-            color=int(self.bot.ui_settings.get("color_primary", "0x3498db"), 16)
-        )
-        
-        features_title = get_feedback(self.bot.i18n, "INFO_FEATURES_TITLE")
-        features_desc = get_feedback(self.bot.i18n, "INFO_FEATURES_DESC")
-        
-        embed.add_field(name=features_title, value=features_desc, inline=False)
-        
-        footer_text = get_feedback(self.bot.i18n, "INFO_FOOTER")
-        embed.set_footer(text=footer_text)
-        
-        if self.bot.user.avatar:
-            embed.set_thumbnail(url=self.bot.user.avatar.url)
-            
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        view = ModernInfoView(self.bot, self.bot.i18n, interaction.guild)
+        # We send the interaction using the view's layout
+        await interaction.response.send_message(view=view, ephemeral=True)
 
     @app_commands.command(name="status", description="Get a snapshot of the bot status (Private in public channels).")
     @is_monitor_context()

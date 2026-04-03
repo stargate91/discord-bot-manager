@@ -1,5 +1,5 @@
 import discord
-from discord.ui import LayoutView, ActionRow, Container, TextDisplay, Separator
+from discord.ui import LayoutView, ActionRow, Container, TextDisplay, Separator, Section, Thumbnail
 import os
 import sys
 import asyncio
@@ -304,6 +304,41 @@ class StatusContainer(Container):
                     self.add_item(Separator())
         else:
             self.add_item(TextDisplay(f"*{i18n.get('error_no_bots_configured', 'No bots configured.')}*"))
+
+class ModernInfoView(LayoutView):
+    """A premium, modern intro view for FixItFixa using Components V2 layout."""
+    def __init__(self, bot, i18n, guild):
+        ui = getattr(bot, 'ui_settings', {})
+        accent = ui.get("accent_color", 0x2b2d31)
+        super().__init__(timeout=None)
+        
+        container = Container(accent_color=accent)
+        
+        # Header with bot name and avatar
+        container.add_item(Section(
+            f"# {get_feedback(i18n, 'INFO_TITLE', bot_name=bot.manager_name)}",
+            accessory=Thumbnail(bot.user.display_avatar.url)
+        ))
+        
+        container.add_item(Separator())
+        
+        # Description
+        container.add_item(TextDisplay(get_feedback(i18n, "INFO_DESC", bot_name=bot.manager_name)))
+        
+        container.add_item(Separator())
+        
+        # Features
+        container.add_item(TextDisplay(
+            f"**{get_feedback(i18n, 'INFO_FEATURES_TITLE')}**\n" + 
+            get_feedback(i18n, "INFO_FEATURES_DESC")
+        ))
+        
+        container.add_item(Separator())
+        
+        # Footer
+        container.add_item(TextDisplay(f"*{get_feedback(i18n, 'INFO_FOOTER')}*"))
+        
+        self.add_item(container)
 
 class ModernStatusView(LayoutView):
     """A premium, modern status view for managed bots using Components V2 layout."""
