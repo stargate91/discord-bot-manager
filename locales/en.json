@@ -104,6 +104,6 @@
     "INFO_TITLE": "FixItFixa - System Supervision",
     "INFO_DESC": "Hi! I'm FixItFixa, the server's lead mechanic. I keep the gears turning in the background. I monitor the telemetry of my bots, fix network leaks, and ensure every sub-system is running at 100% efficiency.",
     "INFO_FEATURES_TITLE": "Workshop Access",
-    "INFO_FEATURES_DESC": "• `/info` - A quick overview of my duties.\n• `/status` - Detailed telemetry in {admin_channel}.\n\n*Note: Heavy tools are restricted to {admin_role} personnel.*",
+    "INFO_FEATURES_DESC": "• `/info` - A quick overview of my duties.\n• `/status` - Subsystem snapshot anywhere, detailed telemetry in {admin_channel}.\n\n*Note: Heavy tools are restricted to {admin_role} personnel.*",
     "INFO_FOOTER": "Gearbox status: NOMINAL. All sub-systems calibrated."
 }
