@@ -218,15 +218,9 @@ def is_monitor_context():
         bot = interaction.client
         level = get_user_level(interaction.user, bot)
         
-        if level == AccessLevel.BOSS:
-            return True
-            
-        channel_id = str(interaction.channel_id)
-        if (bot.admin_channel_id and channel_id == str(bot.admin_channel_id)) or \
-           (bot.public_channel_id and channel_id == str(bot.public_channel_id)):
-            return level >= AccessLevel.INSPECTOR
-            
-        return False
+        # Now allowing anyone with at least INSPECTOR level to use /status anywhere!
+        # It will be ephemeral (private) in non-admin channels.
+        return level >= AccessLevel.INSPECTOR
     return app_commands.check(predicate)
 
 def is_admin_prefix_context():
