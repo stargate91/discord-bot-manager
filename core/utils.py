@@ -155,30 +155,13 @@ def format_desc(bot, text: str, guild=None) -> str:
     """
     if not text: return text
     
-    # Default values from IDs
-    admin_val = str(bot.admin_channel_id) if bot.admin_channel_id else "N/A"
-    public_val = str(bot.public_channel_id) if bot.public_channel_id else "N/A"
-    admin_role_val = str(bot.admin_role_id) if bot.admin_role_id else "N/A"
-    tester_role_val = str(bot.tester_role_id) if bot.tester_role_id else "N/A"
+    # Default values from IDs (use Discord mention syntax for better linking)
+    admin_val = f"<#{bot.admin_channel_id}>" if bot.admin_channel_id else "N/A"
+    public_val = f"<#{bot.public_channel_id}>" if bot.public_channel_id else "N/A"
+    admin_role_val = f"<@&{bot.admin_role_id}>" if bot.admin_role_id else "N/A"
+    tester_role_val = f"<@&{bot.tester_role_id}>" if bot.tester_role_id else "N/A"
 
-    if guild:
-        try:
-            # Resolve channel names
-            admin_ch = guild.get_channel(int(bot.admin_channel_id)) if bot.admin_channel_id else None
-            if admin_ch: admin_val = f"#{admin_ch.name}"
-            
-            public_ch = guild.get_channel(int(bot.public_channel_id)) if bot.public_channel_id else None
-            if public_ch: public_val = f"#{public_ch.name}"
-
-            # Resolve role names
-            admin_role_obj = guild.get_role(int(bot.admin_role_id)) if bot.admin_role_id else None
-            if admin_role_obj: admin_role_val = f"@{admin_role_obj.name}"
-            
-            tester_role_obj = guild.get_role(int(bot.tester_role_id)) if bot.tester_role_id else None
-            if tester_role_obj: tester_role_val = f"@{tester_role_obj.name}"
-        except:
-            pass
-
+    # Even without the names, the mention IDs will still render as links in Discord.
     return text.format(
         admin_channel=admin_val,
         public_channel=public_val,

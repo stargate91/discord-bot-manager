@@ -9,7 +9,7 @@ import subprocess
 from core.logger import log
 
 from core.icons import Icons
-from core.utils import get_feedback
+from core.utils import get_feedback, format_desc
 
 class BotControlButton(discord.ui.Button):
     def __init__(self, style=discord.ButtonStyle.secondary, emoji=None, bot_id=None, bot_name=None, action=None, view=None):
@@ -236,6 +236,17 @@ class StatusContainer(Container):
         update_emoji = Icons.UPDATE
         stop_emoji = Icons.STOP
 
+        # 0. FixItFixa Intro (Persona)
+        # Bringing the technician's identity to the status panel
+        intro_desc = get_feedback(i18n, "INFO_DESC", bot_name=bot_manager.manager_name)
+        features_title = get_feedback(i18n, "INFO_FEATURES_TITLE")
+        features_desc = get_feedback(i18n, "INFO_FEATURES_DESC")
+        footer_text = get_feedback(i18n, "INFO_FOOTER")
+        
+        full_intro = f"{intro_desc}\n\n**{features_title}**\n{features_desc}\n\n*{footer_text}*"
+        self.add_item(TextDisplay(format_desc(bot_manager, full_intro)))
+        self.add_item(Separator())
+
         # 1. Manager Header & Stats
         cpu_label = get_feedback(i18n, "cpu")
         ram_label = get_feedback(i18n, "ram")
@@ -323,15 +334,13 @@ class ModernInfoView(LayoutView):
         container.add_item(Separator())
         
         # Description
-        container.add_item(TextDisplay(get_feedback(i18n, "INFO_DESC", bot_name=bot.manager_name)))
+        container.add_item(TextDisplay(format_desc(bot, get_feedback(i18n, "INFO_DESC", bot_name=bot.manager_name))))
         
         container.add_item(Separator())
         
         # Features
-        container.add_item(TextDisplay(
-            f"**{get_feedback(i18n, 'INFO_FEATURES_TITLE')}**\n" + 
-            get_feedback(i18n, "INFO_FEATURES_DESC")
-        ))
+        features_combined = f"**{get_feedback(i18n, 'INFO_FEATURES_TITLE')}**\n{get_feedback(i18n, 'INFO_FEATURES_DESC')}"
+        container.add_item(TextDisplay(format_desc(bot, features_combined)))
         
         container.add_item(Separator())
         
