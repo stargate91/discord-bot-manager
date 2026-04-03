@@ -1,9 +1,9 @@
 {
-    "activity_text": "Keeping {count} bots on a leash...",
-    "activity_maintenance": "Tightening bolts on {count} bots...",
+    "activity_text": "Tending to my {count} little bots...",
+    "activity_maintenance": "FixItFixa's tightening some bolts on {count} bots...",
     "activity_resource": "Workshop: {cpu}% CPU | {ram}MB RAM",
     "activity_network": "Network noise: {ACTIVITY_DOWN} {down} | {ACTIVITY_UP} {up}",
-    "activity_status": "All sub-systems stable. Neural-link OK.",
+    "activity_status": "Systems calibrated. Everything starts on the first try! 🔧",
     "bot_stopped_alert": "**{name}** ({id}) has stopped unexpectedly!\nWould you like me to restart it? Use `/restart bot_id:{id}` command.",
     "manager_status_header": "### Manager Status",
     "bots_status_header": "Managed Bots",
@@ -67,7 +67,7 @@
     "desc_sync": "[Bot Dev] Sync slash commands manually.",
     "desc_param_bot_id": "Select a bot from the list",
     "desc_param_lines": "Number of lines to fetch (default: 50, all: 0)",
-    "default_manager_name": "Bot Manager",
+    "default_manager_name": "FixItFixa",
     "sync_success_global": "**{count}** commands synced globally. Restart the Bot Manager!",
     "sync_success_copy": "Global commands copied and **{count}** commands synced.",
     "sync_success_guild": "**{count}** commands synced to this guild.",
@@ -99,5 +99,10 @@
     "status_stopping": "Manager is shutting down...",
     "purge_confirm": "Are you sure you want to delete ALL messages in this channel?",
     "purge_success": "**{count}** messages deleted.",
-    "purge_error": "Error during purge: {error}"
+    "purge_error": "Error during purge: {error}",
+    "INFO_TITLE": "FixItFixa - System Supervision",
+    "INFO_DESC": "Hi! I'm FixItFixa, the server's lead mechanic. I keep the gears turning in the background. I monitor the bots, fix network leaks, and ensure every sub-system is running at 100% efficiency.",
+    "INFO_FEATURES_TITLE": "Public Access",
+    "INFO_FEATURES_DESC": "• `/info` - A quick overview of my duties.\n\n*Note: Access to heavy tools (status panels, logs, restarts) is restricted to designated maintenance staff.*",
+    "INFO_FOOTER": "All sub-systems are operating within normal parameters."
 }

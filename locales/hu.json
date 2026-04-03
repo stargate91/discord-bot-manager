@@ -1,9 +1,9 @@
 {
-    "activity_text": "Pórázon tartok {count} botot...",
-    "activity_maintenance": "Csavarok meghúzása {count} boton...",
-    "activity_resource": "Műhely: {cpu}% CPU | {ram}MB RAM",
-    "activity_network": "Zaj a hálózaton: {ACTIVITY_DOWN} {down} | {ACTIVITY_UP} {up}",
-    "activity_status": "Minden alrendszer stabil. Neural-link OK.",
+    "activity_text": "Fegyelmezem a(z) {count} kicsikémet...",
+    "activity_maintenance": "FixItFixa épp csavarokat húz meg {count} boton...",
+    "activity_resource": "Műhelyem: {cpu}% CPU | {ram}MB RAM",
+    "activity_network": "Hálózati frekvencia: {ACTIVITY_DOWN} {down} | {ACTIVITY_UP} {up}",
+    "activity_status": "Alrendszerek kalibrálva. Pöccre indul minden! 🔧",
     "bot_stopped_alert": "A(z) **{name}** ({id}) hirtelen leállt!\nSzeretnéd, hogy újraindítsam? Használd a `/restart bot_id:{id}` parancsot.",
     "manager_status_header": "### Manager Állapot",
     "bots_status_header": "Kezelt Botok",
@@ -67,7 +67,7 @@
     "desc_sync": "[Bot Dev] Slash parancsok kézi szinkronizálása.",
     "desc_param_bot_id": "Válassz egy botot a listából",
     "desc_param_lines": "Lekérendő sorok száma (alapértelmezett: 50, összes: 0)",
-    "default_manager_name": "Bot Manager",
+    "default_manager_name": "FixItFixa",
     "sync_success_global": "**{count}** parancs globálisan szinkronizálva. Indítsd újra a Bot Managert!",
     "sync_success_copy": "Globális parancsok másolva és **{count}** parancs szinkronizálva.",
     "sync_success_guild": "**{count}** parancs szinkronizálva a szerverre.",
@@ -99,5 +99,10 @@
     "status_stopping": "A Manager leáll...",
     "purge_confirm": "Biztosan törölni szeretnéd az ÖSSZES üzenetet ebben a csatornában?",
     "purge_success": "**{count}** üzenet törölve.",
-    "purge_error": "Hiba a törlés során: {error}"
+    "purge_error": "Hiba a törlés során: {error}",
+    "INFO_TITLE": "FixItFixa - Rendszerfelügyelet",
+    "INFO_DESC": "Szia! FixItFixa vagyok, a szerver gépésze. Én tartom mozgásban a fogaskerekeket a háttérben. Felügyelem a botokat, javítom a hálózati szivárgásokat és gondoskodom róla, hogy minden alrendszer 100%-os hatékonysággal pörögjön.",
+    "INFO_FEATURES_TITLE": "Publikus Felületek",
+    "INFO_FEATURES_DESC": "• `/info` - Gyors áttekintés a feladataimról.\n\n*Megjegyzés: A komolyabb szerszámokhoz (státusz-panelek, logok, újraindítás) csak a kijelölt karbantartók férhetnek hozzá.*",
+    "INFO_FOOTER": "Minden alrendszer stabil. Gépforgás: OK."
 }

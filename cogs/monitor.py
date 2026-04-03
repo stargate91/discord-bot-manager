@@ -395,6 +395,30 @@ class MonitoringCog(commands.Cog):
         log.info("[Status] Periodic recreation of status panel triggered.")
         await self.cleanup_and_recreate_panel()
 
+    @app_commands.command(name="info", description="General information about FixItFixa.")
+    async def info(self, interaction: discord.Interaction):
+        """Displays information about the Bot Manager and its mission."""
+        from core.utils import get_feedback
+        
+        embed = discord.Embed(
+            title=get_feedback(self.bot.i18n, "INFO_TITLE", bot_name=self.bot.manager_name),
+            description=get_feedback(self.bot.i18n, "INFO_DESC", bot_name=self.bot.manager_name),
+            color=int(self.bot.ui_settings.get("color_primary", "0x3498db"), 16)
+        )
+        
+        features_title = get_feedback(self.bot.i18n, "INFO_FEATURES_TITLE")
+        features_desc = get_feedback(self.bot.i18n, "INFO_FEATURES_DESC")
+        
+        embed.add_field(name=features_title, value=features_desc, inline=False)
+        
+        footer_text = get_feedback(self.bot.i18n, "INFO_FOOTER")
+        embed.set_footer(text=footer_text)
+        
+        if self.bot.user.avatar:
+            embed.set_thumbnail(url=self.bot.user.avatar.url)
+            
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
     @app_commands.command(name="status", description="Get a snapshot of the bot status (Private in public channels).")
     @is_monitor_context()
     async def status(self, interaction: discord.Interaction):
