@@ -10,7 +10,7 @@ import platform
 import shutil
 import subprocess
 from core.logger import log
-from core.utils import is_admin_context, is_monitor_context, get_feedback
+from core.utils import is_admin_context, is_monitor_context, get_feedback, format_desc
 from core.icons import Icons
 
 class MonitoringCog(commands.Cog):
@@ -31,6 +31,12 @@ class MonitoringCog(commands.Cog):
         
         # Git Status Tracking (bot_id -> is_behind)
         self.git_behind_status = {}
+        
+        # Initial format (placeholders to IDs)
+        for cmd in self.get_app_commands():
+             if not hasattr(cmd, "_raw_desc"):
+                 cmd._raw_desc = cmd.description
+             cmd.description = format_desc(self.bot, cmd._raw_desc)
 
     async def cog_load(self):
         """Called when the cog is loaded."""
@@ -395,14 +401,29 @@ class MonitoringCog(commands.Cog):
         log.info("[Status] Periodic recreation of status panel triggered.")
         await self.cleanup_and_recreate_panel()
 
+    def refresh_descriptions(self, guild):
+        """Re-formats all slash command descriptions using actual names from the guild."""
+        for cmd in self.get_app_commands():
+             if hasattr(cmd, "_raw_desc"):
+                 cmd.description = format_desc(self.bot, cmd._raw_desc, guild)
+
     @app_commands.command(name="info", description="General information about FixItFixa.")
-    async def info(self, interaction: discord.Interaction):
+    @app_commands.describe(public="Set to True to show the info card to everyone (Admin only).")
+    @is_monitor_context()
+    async def info(self, interaction: discord.Interaction, public: bool = False):
         """Displays information about the Bot Manager and its mission."""
         from core.views import ModernInfoView
         
+        # Visibility Control: Default ephemeral, optional public for admins
+        if public:
+            from core.utils import AccessLevel, get_user_level
+            level = get_user_level(interaction.user, self.bot)
+            if level < AccessLevel.BOSS:
+                public = False # Force ephemeral for non-admins
+        
         view = ModernInfoView(self.bot, self.bot.i18n, interaction.guild)
         # We send the interaction using the view's layout
-        await interaction.response.send_message(view=view, ephemeral=True)
+        await interaction.response.send_message(view=view, ephemeral=not public)
 
     @app_commands.command(name="status", description="Get a snapshot of the bot status (Private in public channels).")
     @is_monitor_context()

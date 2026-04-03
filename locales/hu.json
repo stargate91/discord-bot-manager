@@ -100,9 +100,10 @@
     "purge_confirm": "Biztosan törölni szeretnéd az ÖSSZES üzenetet ebben a csatornában?",
     "purge_success": "**{count}** üzenet törölve.",
     "purge_error": "Hiba a törlés során: {error}",
+    "desc_param_public": "Ha Igaz, az információs kártya mindenki számára látható lesz (csak Admin).",
     "INFO_TITLE": "FixItFixa - Rendszerfelügyelet",
-    "INFO_DESC": "Szia! FixItFixa vagyok, a szerver gépésze. Én tartom mozgásban a fogaskerekeket a háttérben. Felügyelem a botokat, javítom a hálózati szivárgásokat és gondoskodom róla, hogy minden alrendszer 100%-os hatékonysággal pörögjön.",
-    "INFO_FEATURES_TITLE": "Publikus Felületek",
-    "INFO_FEATURES_DESC": "• `/info` - Gyors áttekintés a feladataimról.\n\n*Megjegyzés: A komolyabb szerszámokhoz (státusz-panelek, logok, újraindítás) csak a kijelölt karbantartók férhetnek hozzá.*",
-    "INFO_FOOTER": "Minden alrendszer stabil. Gépforgás: OK."
+    "INFO_DESC": "Szia! FixItFixa vagyok, a szerver gépésze. Én tartom mozgásban a fogaskerekeket a háttérben. Felügyelem a botjaim telemetriáját, javítom a hálózati szivárgásokat és gondoskodom róla, hogy minden alrendszer 100%-os hatékonysággal pörögjön.",
+    "INFO_FEATURES_TITLE": "Műhely Hozzáférés",
+    "INFO_FEATURES_DESC": "• `/info` - Gyors áttekintés a feladataimról.\n• `/status` - Részletes telemetria itt: {admin_channel}.\n\n*Megjegyzés: A komolyabb szerszámokhoz csak a(z) {admin_role} állomány férhet hozzá.*",
+    "INFO_FOOTER": "Gépforgás: NOMINÁLIS. Minden alrendszer kalibrálva."
 }

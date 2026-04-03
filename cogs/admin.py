@@ -318,6 +318,11 @@ class ManagementCog(commands.Cog):
     @is_admin_prefix_context()
     async def sync_prefix(self, ctx: commands.Context, spec: str | None = None):
         """[Admin] Sync slash commands manually (guild/global/copy)."""
+        # Refresh descriptions before syncing
+        for cog in ctx.bot.cogs.values():
+            if hasattr(cog, "refresh_descriptions"):
+                cog.refresh_descriptions(ctx.guild)
+                
         # 1. Always localize GLOBAL commands first (they are the source for copy_global_to)
         self.bot.i18n.localize_commands(self.bot.tree, guild=None)
         
@@ -364,6 +369,11 @@ class ManagementCog(commands.Cog):
     @app_commands.describe(mode="guild (instant), global (slow), or copy")
     @is_admin_context()
     async def sync_slash(self, interaction: discord.Interaction, mode: str = "guild"):
+        # Refresh descriptions before syncing
+        for cog in interaction.client.cogs.values():
+            if hasattr(cog, "refresh_descriptions"):
+                cog.refresh_descriptions(interaction.guild)
+
         log.info(f"User {interaction.user} requested /sync mode={mode}")
         await interaction.response.defer(ephemeral=True)
 

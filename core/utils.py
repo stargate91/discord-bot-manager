@@ -148,6 +148,45 @@ def get_feedback(i18n, key: str, **kwargs) -> str:
         
     return f"{emoji_str} {text}".strip()
 
+def format_desc(bot, text: str, guild=None) -> str:
+    """
+    Fills placeholders in command descriptions with actual channel and role names.
+    Consistent with the Watcher Bot's dynamic description system.
+    """
+    if not text: return text
+    
+    # Default values from IDs
+    admin_val = str(bot.admin_channel_id) if bot.admin_channel_id else "N/A"
+    public_val = str(bot.public_channel_id) if bot.public_channel_id else "N/A"
+    admin_role_val = str(bot.admin_role_id) if bot.admin_role_id else "N/A"
+    tester_role_val = str(bot.tester_role_id) if bot.tester_role_id else "N/A"
+
+    if guild:
+        try:
+            # Resolve channel names
+            admin_ch = guild.get_channel(int(bot.admin_channel_id)) if bot.admin_channel_id else None
+            if admin_ch: admin_val = f"#{admin_ch.name}"
+            
+            public_ch = guild.get_channel(int(bot.public_channel_id)) if bot.public_channel_id else None
+            if public_ch: public_val = f"#{public_ch.name}"
+
+            # Resolve role names
+            admin_role_obj = guild.get_role(int(bot.admin_role_id)) if bot.admin_role_id else None
+            if admin_role_obj: admin_role_val = f"@{admin_role_obj.name}"
+            
+            tester_role_obj = guild.get_role(int(bot.tester_role_id)) if bot.tester_role_id else None
+            if tester_role_obj: tester_role_val = f"@{tester_role_obj.name}"
+        except:
+            pass
+
+    return text.format(
+        admin_channel=admin_val,
+        public_channel=public_val,
+        admin_role=admin_role_val,
+        tester_role=tester_role_val,
+        bot_name=getattr(bot, 'manager_name', 'Bot Manager')
+    )
+
 # This is a 'decorator' - it's a special function that checks something before running a command!
 class AccessLevel:
     EVERYONE = 0
