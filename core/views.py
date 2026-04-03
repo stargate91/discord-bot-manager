@@ -236,17 +236,6 @@ class StatusContainer(Container):
         update_emoji = Icons.UPDATE
         stop_emoji = Icons.STOP
 
-        # 0. FixItFixa Intro (Persona)
-        # Bringing the technician's identity to the status panel
-        intro_desc = get_feedback(i18n, "INFO_DESC", bot_name=bot_manager.manager_name)
-        features_title = get_feedback(i18n, "INFO_FEATURES_TITLE")
-        features_desc = get_feedback(i18n, "INFO_FEATURES_DESC")
-        footer_text = get_feedback(i18n, "INFO_FOOTER")
-        
-        full_intro = f"{intro_desc}\n\n**{features_title}**\n{features_desc}\n\n*{footer_text}*"
-        self.add_item(TextDisplay(format_desc(bot_manager, full_intro)))
-        self.add_item(Separator())
-
         # 1. Manager Header & Stats
         cpu_label = get_feedback(i18n, "cpu")
         ram_label = get_feedback(i18n, "ram")
