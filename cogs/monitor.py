@@ -409,16 +409,15 @@ class MonitoringCog(commands.Cog):
 
     @app_commands.command(name="info", description="General information about FixItFixa.")
     @app_commands.describe(public="Set to True to show the info card to everyone (Admin only).")
-    @is_monitor_context()
     async def info(self, interaction: discord.Interaction, public: bool = False):
         """Displays information about the Bot Manager and its mission."""
         from core.views import ModernInfoView
         
-        # Visibility Control: Default ephemeral, optional public for admins
+        # Visibility Control: Default ephemeral, optional public for admins/mechanics
         if public:
             from core.utils import AccessLevel, get_user_level
             level = get_user_level(interaction.user, self.bot)
-            if level < AccessLevel.BOSS:
+            if level < AccessLevel.MECHANIC:
                 public = False # Force ephemeral for non-admins
         
         view = ModernInfoView(self.bot, self.bot.i18n, interaction.guild)
@@ -426,19 +425,25 @@ class MonitoringCog(commands.Cog):
         await interaction.response.send_message(view=view, ephemeral=not public)
 
     @app_commands.command(name="status", description="Get a snapshot of the bot status (Private in public channels).")
-    @is_monitor_context()
     async def status(self, interaction: discord.Interaction):
         """Force a recreation of the status panel or send an ephemeral snapshot."""
         log.info(f"User {interaction.user} requested /status snapshot.")
         
-        # Check if we are in the primary admin channel
+        # Check Permissions and Channel
+        from core.utils import AccessLevel, get_user_level
+        level = get_user_level(interaction.user, self.bot)
         is_admin_channel = str(interaction.channel_id) == str(self.bot.admin_channel_id)
+        is_mechanic = level >= AccessLevel.MECHANIC
         
         # We always want fresh Git data for the snapshot/refresh
-        await interaction.response.defer(ephemeral=not is_admin_channel)
+        # If in admin channel and user is mechanic, refresh the persistent panel
+        # Otherwise, send an ephemeral snapshot
+        do_refresh = is_admin_channel and is_mechanic
+        
+        await interaction.response.defer(ephemeral=True)
         await self.git_fetch_task()
         
-        if is_admin_channel:
+        if do_refresh:
             # Persistent Refresh (Workshop)
             await self.cleanup_and_recreate_panel()
             await interaction.followup.send(get_feedback(self.bot.i18n, "status_refreshed"), ephemeral=True)
