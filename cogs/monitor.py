@@ -407,7 +407,7 @@ class MonitoringCog(commands.Cog):
              if hasattr(cmd, "_raw_desc"):
                  cmd.description = format_desc(self.bot, cmd._raw_desc, guild)
 
-    @app_commands.command(name="info", description="General information about FixItFixa.")
+    @app_commands.command(name="info", description="General information about FixItFixa. (Public option for Admins only)")
     @app_commands.describe(public="Set to True to show the info card to everyone (Admin only).")
     async def info(self, interaction: discord.Interaction, public: bool = False):
         """Displays information about the Bot Manager and its mission."""
@@ -424,7 +424,7 @@ class MonitoringCog(commands.Cog):
         # We send the interaction using the view's layout
         await interaction.response.send_message(view=view, ephemeral=not public)
 
-    @app_commands.command(name="status", description="Get a snapshot of the bot status (Private in public channels).")
+    @app_commands.command(name="status", description="Bot status snapshot. Anyone can request a private report; admins refresh the Workshop.")
     async def status(self, interaction: discord.Interaction):
         """Force a recreation of the status panel or send an ephemeral snapshot."""
         log.info(f"User {interaction.user} requested /status snapshot.")
