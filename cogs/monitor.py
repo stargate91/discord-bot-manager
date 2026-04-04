@@ -335,9 +335,11 @@ class MonitoringCog(commands.Cog):
                 else:
                     b_uptime_str = get_feedback(self.bot.i18n, "uptime_minutes", m=int(b_uptime_sec / 60))
                 
+                # We try to get a more accurate 'Running' label from our process manager
+                status_text = get_feedback(self.bot.i18n, "status_running")
                 b_proc = self.bot.process_manager.managed_processes.get(bot_id)
-                if b_proc and b_proc.is_running():
-                    status_text = get_feedback(self.bot.i18n, "status_running")
+                if b_proc and not b_proc.is_running():
+                    status_text = get_feedback(self.bot.i18n, "status_uncertain")
 
                 bot_entry.update({
                     "status": status_text,

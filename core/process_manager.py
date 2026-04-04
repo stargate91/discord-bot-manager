@@ -314,10 +314,13 @@ class ProcessManager:
             
             # 2. If still not found, try a general discovery (e.g. for standalone bots)
             if not process or not process.is_running():
-                # We use a localized version of discover_processes to avoid full scan if possible
-                # But for now, a full scan is safest to avoid missing anything
+                log.info(f"[Stats] Bot {bot_id} not running or stalely tracked. Running discovery...")
                 self.discover_processes()
                 process = self.managed_processes.get(bot_id)
+                if process and process.is_running():
+                    log.info(f"[Stats] Bot {bot_id} re-discovered during stats check (PID: {process.pid})")
+                else:
+                    log.debug(f"[Stats] Bot {bot_id} discovery failed.")
 
         if not process or not process.is_running():
             return None
