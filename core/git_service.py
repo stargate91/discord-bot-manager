@@ -52,11 +52,22 @@ class GitService:
             # Convert SSH or .git URL to standard HTTPS web URL
             if url.startswith("git@"):
                 url = url.replace(":", "/").replace("git@", "https://")
+            
+            # Normalize GitHub hostnames (handles SSH aliases like github-botzilla)
+            from urllib.parse import urlparse, urlunparse
+            parsed = urlparse(url)
+            if "github" in parsed.netloc and parsed.netloc != "github.com":
+                # Reconstruct URL with normalized hostname
+                new_netloc = "github.com"
+                parsed = parsed._replace(netloc=new_netloc)
+                url = urlunparse(parsed)
+
             if url.endswith(".git"):
                 url = url[:-4]
             return url
         except Exception:
             return None
+
 
     def update_repo(self, path, branch="origin/main"):
         """This function downloads the latest code from GitHub."""
