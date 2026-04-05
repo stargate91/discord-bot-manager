@@ -101,7 +101,8 @@ class MonitoringCog(commands.Cog):
         # Check Managed Bots
         for bot_id, bot_config in self.bot.bots.items():
             # Use same branch for bots or customize if needed
-            self.git_behind_status[bot_id] = await self.check_if_behind(bot_config.path, branch)
+            target_branch = getattr(bot_config, "git_branch", None) or branch
+            self.git_behind_status[bot_id] = await self.check_if_behind(bot_config.path, target_branch)
 
     async def check_if_behind(self, path, branch="origin/main"):
         """Checks if a git repo is behind its remote."""

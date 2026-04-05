@@ -97,7 +97,8 @@
             "path": "/home/jupi/bots/poker",
             "cmd": "/home/jupi/bots_env/bin/python run.py",
             "log": "botzilla.log",
-            "systemd_service": "poker.service"
+            "systemd_service": "poker.service",
+            "git_branch": "origin/master"
         },
         "1489908793780338688": {
             "name": "Nova",

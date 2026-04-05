@@ -73,7 +73,8 @@ class ManagementService:
         try:
             # 1. Update via Git first (while bots are running)
             log.info(f"Updating code at: {bot.path}")
-            up_success, up_msg, changed, details = await asyncio.to_thread(self.git_service.update_repo, bot.path, self.git_branch)
+            target_branch = getattr(bot, "git_branch", None) or self.git_branch
+            up_success, up_msg, changed, details = await asyncio.to_thread(self.git_service.update_repo, bot.path, target_branch)
             results.append(up_msg)
             
             if not up_success:
