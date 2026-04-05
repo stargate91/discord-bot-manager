@@ -98,6 +98,13 @@
             "cmd": "/home/jupi/bots_env/bin/python run.py",
             "log": "botzilla.log",
             "systemd_service": "poker.service"
+        },
+        "1489908793780338688": {
+            "name": "Nova",
+            "path": "/home/jupi/bots/feed",
+            "cmd": "/home/jupi/bots_env/bin/python main.py",
+            "log": "data/feed_bot.log",
+            "systemd_service": "feedbot.service"
         }
     }
 }
