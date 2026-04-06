@@ -109,6 +109,12 @@
             "cmd": "/home/jupi/bots_env/bin/python main.py",
             "log": "data/feed_bot.log",
             "systemd_service": "feedbot.service"
+        },
+        "1490237426424348752": {
+            "name": "Nexus",
+            "path": "/home/jupi/bots/event",
+            "cmd": "/home/jupi/bots_env/bin/python main.py",
+            "log": "logs/discord_event_bot.log",
+            "systemd_service": "eventbot.service"
         }
     }
-}
