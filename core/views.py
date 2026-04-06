@@ -286,7 +286,13 @@ class StatusContainer(Container):
                     # Single Bot View
                     b_id, b_info = members[0]
                     b_name = b_info["name"]
-                    bot_text = f"{header_prefix}**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n`{b_info['log_size']} | {b_info['uptime']} | CPU: {b_info['cpu']}% | RAM: {int(b_info['ram'])} MB`"
+                    
+                    if b_info.get("is_running"):
+                        details = f"`{b_info.get('log_size', '0B')} | {b_info.get('uptime', '0s')} | CPU: {b_info.get('cpu', 0)}% | RAM: {int(b_info.get('ram', 0))} MB`"
+                    else:
+                        details = f"`{get_feedback(i18n, 'log_size')}: {b_info.get('log_size', '0B')}`"
+                        
+                    bot_text = f"{header_prefix}**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{details}"
                     self.add_item(TextDisplay(bot_text))
                     
                     bot_row = ActionRow()
