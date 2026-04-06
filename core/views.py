@@ -225,8 +225,8 @@ async def handle_status_interaction(interaction: discord.Interaction, bot_id: st
         # the user can click the Global Refresh button if they want.
 
 class StatusContainer(Container):
-    """A visual container box for the status content (Optimized for space)."""
-    def __init__(self, bot_manager, i18n, manager_stats, bots_stats, parent_view):
+    """A visual container box for the status content (Paginated)."""
+    def __init__(self, bot_manager, i18n, manager_stats, bots_stats, parent_view, page=0, page_size=3):
         ui = getattr(bot_manager, 'ui_settings', {})
         accent = ui.get("accent_color", 0x2b2d31)
         super().__init__(accent_color=accent)
@@ -235,22 +235,32 @@ class StatusContainer(Container):
         update_emoji = Icons.UPDATE
         stop_emoji = Icons.STOP
 
-        # 1. Manager Statistics
-        manager_text = (
-            f"**{bot_manager.manager_name}**" + (f" **{get_feedback(i18n, 'update_available')}**" if manager_stats.get("has_update") else "") + "\n"
-            f"**{get_feedback(i18n, 'status_running')}**\n"
-            f"{get_feedback(i18n, 'uptime')}: {manager_stats['uptime']} | {get_feedback(i18n, 'server_uptime')}: {manager_stats['host_uptime']}\n"
-            f"{get_feedback(i18n, 'branch')}: `{manager_stats['branch']}`\n"
-            f"{get_feedback(i18n, 'resources')}: CPU: `{manager_stats['cpu']}%` | RAM: `{int(manager_stats['ram'])} MB` | Net: `{manager_stats['net']}`"
-        )
-        self.add_item(TextDisplay(manager_text))
-        
-        mgr_row = ActionRow()
-        mgr_row.add_item(BotControlButton(emoji=restart_emoji, bot_id="manager", action="restart", view=parent_view))
-        mgr_row.add_item(BotControlButton(emoji=update_emoji, bot_id="manager", action="update", view=parent_view))
-        mgr_row.add_item(BotControlButton(emoji=stop_emoji, bot_id="manager", action="stop", view=parent_view))
-        self.add_item(mgr_row)
-        self.add_item(Separator(visible=True, spacing=discord.enums.SeparatorSpacing.large))
+        # 1. Manager Statistics (Only on Page 1)
+        if page == 0:
+            cpu_label = get_feedback(i18n, "cpu")
+            ram_label = get_feedback(i18n, "ram")
+            host_label = get_feedback(i18n, "host_os")
+            free_label = get_feedback(i18n, "system_free")
+            disk_label = get_feedback(i18n, "disk")
+            swap_label = get_feedback(i18n, "swap")
+            server_up_label = get_feedback(i18n, "server_uptime")
+            
+            manager_text = (
+                f"**{bot_manager.user.name} • {bot_manager.manager_name}**" + (f" **{get_feedback(i18n, 'update_available')}**" if manager_stats.get("has_update") else "") + "\n"
+                f"**{get_feedback(i18n, 'status_running')}** | PID: `{os.getpid()}`\n"
+                f"{get_feedback(i18n, 'uptime')}: {manager_stats['uptime']} | {server_up_label}: {manager_stats['host_uptime']}\n"
+                f"{get_feedback(i18n, 'branch')}: `{manager_stats['branch']}` | {host_label}: `{manager_stats['os']}`\n"
+                f"{get_feedback(i18n, 'resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB` | Net: `{manager_stats['net']}`\n"
+                f"{free_label}: CPU: `{int(manager_stats['sys_cpu_free'])}%` | {ram_label}: `{int(manager_stats['sys_ram_free'])} MB` | {disk_label}: `{int(manager_stats['sys_disk_free'])} GB` | {swap_label}: `{manager_stats['swap']}%`"
+            )
+            self.add_item(TextDisplay(manager_text))
+            
+            mgr_row = ActionRow()
+            mgr_row.add_item(BotControlButton(emoji=restart_emoji, bot_id="manager", action="restart", view=parent_view))
+            mgr_row.add_item(BotControlButton(emoji=update_emoji, bot_id="manager", action="update", view=parent_view))
+            mgr_row.add_item(BotControlButton(emoji=stop_emoji, bot_id="manager", action="stop", view=parent_view))
+            self.add_item(mgr_row)
+            self.add_item(Separator(visible=True, spacing=discord.enums.SeparatorSpacing.large))
 
         # 2. Managed Bots Section
         if bots_stats:
@@ -262,35 +272,53 @@ class StatusContainer(Container):
                 path_groups[path].append((b_id, b_info))
 
             group_list = list(path_groups.items())
-            for i, (path, members) in enumerate(group_list):
-                header_prefix = f"\n**{get_feedback(i18n, 'bots_status_header')}**\n" if i == 0 else ""
+            
+            # Pagination slicing
+            start_idx = page * page_size
+            end_idx = start_idx + page_size
+            paged_groups = group_list[start_idx:end_idx]
+            
+            for i, (path, members) in enumerate(paged_groups):
+                header_prefix = f"\n**{get_feedback(i18n, 'bots_status_header')} (Page {page+1})**\n" if i == 0 else ""
                 
                 # Check for updates in any group member
                 has_update = any(m[1].get("has_update") for m in members)
                 up_alert = f" **{get_feedback(i18n, 'update_available')}**" if has_update else ""
 
                 if len(members) > 1:
-                    # Cluster View (Super Optimized - 3 buttons total)
-                    statuses = " | ".join([f"**{m[1]['name']}**: {m[1]['status']}" for m in members])
-                    cluster_text = f"{header_prefix}{statuses}{up_alert}\n`Cluster: {os.path.basename(path)} | Path: {path}`"
-                    self.add_item(TextDisplay(cluster_text))
+                    # Cluster View (Ava & Zea)
+                    cluster_title = f"{header_prefix}**Cluster • {os.path.basename(path)}**{up_alert}\n`Path: {path}`"
+                    self.add_item(TextDisplay(cluster_title))
                     
+                    # One shared row of buttons for the entire cluster
                     cluster_row = ActionRow()
                     primary_id = members[0][0]
-                    primary_name = members[0][1]["name"]
-                    cluster_row.add_item(BotControlButton(emoji=restart_emoji, bot_id=primary_id, bot_name=primary_name, action="restart", view=parent_view))
-                    cluster_row.add_item(BotControlButton(emoji=update_emoji, bot_id=primary_id, bot_name=primary_name, action="update", view=parent_view))
-                    cluster_row.add_item(BotControlButton(emoji=stop_emoji, bot_id=primary_id, bot_name=primary_name, action="stop", view=parent_view))
+                    cluster_row.add_item(BotControlButton(emoji=restart_emoji, bot_id=primary_id, bot_name=members[0][1]["name"], action="restart", view=parent_view))
+                    cluster_row.add_item(BotControlButton(emoji=update_emoji, bot_id=primary_id, bot_name=members[0][1]["name"], action="update", view=parent_view))
+                    cluster_row.add_item(BotControlButton(emoji=stop_emoji, bot_id=primary_id, bot_name=members[0][1]["name"], action="stop", view=parent_view))
                     self.add_item(cluster_row)
+                    
+                    # Detailed status for each member
+                    member_details = []
+                    for m_id, m_info in members:
+                        if m_info.get("is_running"):
+                            stats = f"CPU: `{m_info['cpu']}%` | RAM: `{int(m_info['ram'])}MB` | Log: `{m_info['log_size']}`"
+                        else:
+                            stats = f"Log: `{m_info['log_size']}`"
+                        member_details.append(f"**{m_info['status']} • {m_info['name']}**\n{stats}")
+                    self.add_item(TextDisplay("\n".join(member_details)))
                 else:
                     # Single Bot View
                     b_id, b_info = members[0]
                     b_name = b_info["name"]
                     
                     if b_info.get("is_running"):
-                        details = f"`{b_info.get('log_size', '0B')} | {b_info.get('uptime', '0s')} | CPU: {b_info.get('cpu', 0)}% | RAM: {int(b_info.get('ram', 0))} MB`"
+                        details = f"CPU: `{b_info.get('cpu', 0)}%` | RAM: `{int(b_info.get('ram', 0))} MB` | {get_feedback(i18n, 'uptime_short')}: {b_info.get('uptime', '0s')}\nLog: `{b_info.get('log_size', '0B')}`"
+                        if b_info.get("db_sizes"):
+                            db_parts = " | ".join([f"`{name}`: `{size}`" for name, size in b_info["db_sizes"].items()])
+                            details += f" | DB: {db_parts}"
                     else:
-                        details = f"`{get_feedback(i18n, 'log_size')}: {b_info.get('log_size', '0B')}`"
+                        details = f"{get_feedback(i18n, 'log_size')}: `{b_info.get('log_size', '0B')}`"
                         
                     bot_text = f"{header_prefix}**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{details}"
                     self.add_item(TextDisplay(bot_text))
@@ -340,18 +368,60 @@ class ModernInfoView(LayoutView):
         
         self.add_item(container)
 
+class PageButton(discord.ui.Button):
+    """A button to navigate between status pages."""
+    def __init__(self, direction, cog, current_page, total_pages, i18n):
+        self.direction = direction # -1 for prev, 1 for next
+        self.cog = cog
+        label = "◀" if direction == -1 else "▶"
+        disabled = (direction == -1 and current_page == 0) or (direction == 1 and current_page >= total_pages - 1)
+        super().__init__(style=discord.ButtonStyle.secondary, label=label, disabled=disabled)
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.cog:
+            self.cog.current_page += self.direction
+            # Trigger immediate manual refresh
+            await self.cog.update_status_task()
+            await interaction.response.defer()
+
 class ModernStatusView(LayoutView):
     """A premium, modern status view for managed bots using Components V2 layout."""
-    def __init__(self, bot_manager, i18n, manager_stats, bots_stats):
+    def __init__(self, bot_manager, i18n, manager_stats, bots_stats, current_page=0):
         ui = getattr(bot_manager, 'ui_settings', {})
         timeout = ui.get("view_timeout", 300)
-        # If timeout is 0 or None in config, or explicitly passed as None, we disable it
         super().__init__(timeout=timeout if timeout else None)
         self.bot_manager = bot_manager
         self.i18n = i18n
         
+        # Calculate total pages
+        path_groups = {}
+        for b_id, b_info in bots_stats.items():
+            path = b_info["path"]
+            if path not in path_groups: path_groups[path] = []
+            path_groups[path].append((b_id, b_info))
+        
+        group_list = list(path_groups.items())
+        page_size = 3
+        total_pages = (len(group_list) + page_size - 1) // page_size
+        if total_pages == 0: total_pages = 1
+        
         # Build layout using a Container
-        container = StatusContainer(bot_manager, i18n, manager_stats, bots_stats, self)
+        container = StatusContainer(bot_manager, i18n, manager_stats, bots_stats, self, page=current_page, page_size=page_size)
+        
+        # Add Pagination Row at the bottom
+        if total_pages > 1:
+            nav_row = ActionRow()
+            cog = bot_manager.get_cog("MonitoringCog")
+            
+            nav_row.add_item(PageButton(-1, cog, current_page, total_pages, i18n))
+            
+            # Page Indicator (Label)
+            page_label = discord.ui.Button(style=discord.ButtonStyle.secondary, label=f"{current_page + 1} / {total_pages}", disabled=True)
+            nav_row.add_item(page_label)
+            
+            nav_row.add_item(PageButton(1, cog, current_page, total_pages, i18n))
+            container.add_item(nav_row)
+            
         self.add_item(container)
 
 class UpdateResultEmbed(discord.Embed):

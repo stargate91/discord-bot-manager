@@ -31,6 +31,7 @@ class MonitoringCog(commands.Cog):
         
         # Git Status Tracking (bot_id -> is_behind)
         self.git_behind_status = {}
+        self.current_page = 0
         
         # Initial format (placeholders to IDs)
         for cmd in self.get_app_commands():
@@ -177,7 +178,7 @@ class MonitoringCog(commands.Cog):
                     log.info(f"[Status] Creating new panel in #{channel.name}...")
                     manager_stats, bots_stats = self.get_status_data()
                     from core.views import ModernStatusView
-                    layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats)
+                    layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats, current_page=self.current_page)
 
                     
                     # IMPORTANT: Use a placeholder or initial content
@@ -403,7 +404,7 @@ class MonitoringCog(commands.Cog):
                 if msg:
                     manager_stats, bots_stats = self.get_status_data()
                     from core.views import ModernStatusView
-                    layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats)
+                    layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats, current_page=self.current_page)
                     # We edit the message with the new view. 
                     # Note: We don't send content, the layout container handles everything.
                     await msg.edit(view=layout)
@@ -470,7 +471,7 @@ class MonitoringCog(commands.Cog):
             # Ephemeral Snapshot (Lounge / Elsewhere)
             from core.views import ModernStatusView
             manager_stats, bots_stats = self.get_status_data()
-            layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats)
+            layout = ModernStatusView(self.bot, self.bot.i18n, manager_stats, bots_stats, current_page=self.current_page)
             await interaction.followup.send(view=layout, ephemeral=True)
 
 async def setup(bot):
