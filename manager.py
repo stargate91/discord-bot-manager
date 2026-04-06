@@ -398,16 +398,30 @@ class BotManager(commands.Bot):
     async def check_processes(self):
         """This runs every minute to make sure all our bots are still running."""
         log.info("Manager Heartbeat: Checking processes...")
+        
+        # Track which bots were already alerted to avoid spam
+        if not hasattr(self, 'alerted_bots'):
+            self.alerted_bots = set()
+            
         stopped_bots = self.process_manager.fetch_unexpected_stops()
         
+        # 1. Handle Alerting for stopped bots
         for bot_id, _ in stopped_bots:
             bot_cfg = self.bots.get(bot_id)
             if not bot_cfg: continue
             
-            # If a bot stopped when it wasn't supposed to, we alert the admins
-            log.warning(f"ALERT: Bot {bot_cfg.name} ({bot_id}) stopped unexpectedly.")
-            alert_msg = get_feedback(self.i18n, "bot_stopped_alert", name=bot_cfg.name, id=bot_id)
-            await self.notify_admin(alert_msg)
+            # Only alert if we haven't already alerted for this specific failure
+            if bot_id not in self.alerted_bots:
+                log.warning(f"ALERT: Bot {bot_cfg.name} ({bot_id}) stopped unexpectedly.")
+                alert_msg = get_feedback(self.i18n, "bot_stopped_alert", name=bot_cfg.name, id=bot_id)
+                await self.notify_admin(alert_msg)
+                self.alerted_bots.add(bot_id)
+                
+        # 2. Clear Alerts for running bots (so we can alert again if they fail later)
+        for bot_id in list(self.alerted_bots):
+            if self.process_manager.is_running(bot_id):
+                self.alerted_bots.remove(bot_id)
+                log.info(f"Bot {bot_id} is running again. Alert state cleared.")
 
 
 # This is where the program starts!
