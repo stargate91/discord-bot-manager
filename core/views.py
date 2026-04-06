@@ -273,13 +273,20 @@ class StatusContainer(Container):
 
             group_list = list(path_groups.items())
             
-            # Pagination slicing
-            start_idx = page * page_size
-            end_idx = start_idx + page_size
+            # Variable pagination: Page 0 has 2 items, other pages have 3 items
+            if page == 0:
+                start_idx = 0
+                end_idx = 2
+            else:
+                start_idx = 2 + (page - 1) * 3
+                end_idx = start_idx + 3
             paged_groups = group_list[start_idx:end_idx]
             
             for i, (path, members) in enumerate(paged_groups):
-                header_prefix = f"\n**{get_feedback(i18n, 'bots_status_header')} (Page {page+1})**\n" if i == 0 else ""
+                if i == 0:
+                    header = f"**{get_feedback(i18n, 'bots_status_header')} (Page {page+1})**"
+                    self.add_item(TextDisplay(header))
+                    self.add_item(Separator())
                 
                 # Check for updates in any group member
                 has_update = any(m[1].get("has_update") for m in members)
@@ -287,7 +294,7 @@ class StatusContainer(Container):
 
                 if len(members) > 1:
                     # Cluster View (Ava & Zea)
-                    cluster_title = f"{header_prefix}**Cluster • {os.path.basename(path)}**{up_alert}\n`Path: {path}`"
+                    cluster_title = f"**Cluster • {os.path.basename(path)}**{up_alert}\n`Path: {path}`"
                     self.add_item(TextDisplay(cluster_title))
                     
                     # One shared row of buttons for the entire cluster
@@ -320,7 +327,7 @@ class StatusContainer(Container):
                     else:
                         details = f"{get_feedback(i18n, 'log_size')}: `{b_info.get('log_size', '0B')}`"
                         
-                    bot_text = f"{header_prefix}**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{details}"
+                    bot_text = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{details}"
                     self.add_item(TextDisplay(bot_text))
                     
                     bot_row = ActionRow()
@@ -401,8 +408,12 @@ class ModernStatusView(LayoutView):
             path_groups[path].append((b_id, b_info))
         
         group_list = list(path_groups.items())
-        page_size = 3
-        total_pages = (len(group_list) + page_size - 1) // page_size
+        # Calculate total pages (Page 0: 2 items, others: 3 items)
+        num_groups = len(group_list)
+        if num_groups <= 2:
+            total_pages = 1
+        else:
+            total_pages = 1 + (num_groups - 2 + 3 - 1) // 3
         if total_pages == 0: total_pages = 1
         
         # Build layout using a Container
