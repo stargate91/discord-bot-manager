@@ -117,4 +117,4 @@
             "log": "logs/discord_event_bot.log",
             "systemd_service": "eventbot.service"
         }
-    }
+    }}
