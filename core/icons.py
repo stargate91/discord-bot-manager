@@ -29,6 +29,8 @@ class Icons:
     WAVE: discord.PartialEmoji = None
     ACTIVITY_UP: discord.PartialEmoji = None
     ACTIVITY_DOWN: discord.PartialEmoji = None
+    CARET_LEFT: discord.PartialEmoji = None
+    CARET_RIGHT: discord.PartialEmoji = None
     
     @classmethod
     async def setup_async(cls, bot: discord.Client):
@@ -71,7 +73,8 @@ class Icons:
             "DOT_GREEN": "🟢", "DOT_RED": "🔴", "DOT_YELLOW": "🟡",
             "UP": "⬆️", "DOWN": "⬇️",
             "WRENCH": "🔧", "GEAR": "⚙️", "WAVE": "📶",
-            "ACTIVITY_UP": "⬆️", "ACTIVITY_DOWN": "⬇️"
+            "ACTIVITY_UP": "⬆️", "ACTIVITY_DOWN": "⬇️",
+            "CARET_LEFT": "◀", "CARET_RIGHT": "▶"
         }
 
         # Extract provided data from config object or dict
@@ -113,7 +116,8 @@ class Icons:
             "RESTART", "UPDATE", "STOP", "ROCKET", "SUCCESS", 
             "CONTROLLER", "ERROR", "WARNING", "ALERT", "LOG", "PACKAGE", "SHIELD", 
             "ROLLBACK", "DOT_GREEN", "DOT_RED", "DOT_YELLOW", "UP", "DOWN",
-            "WRENCH", "GEAR", "WAVE", "ACTIVITY_UP", "ACTIVITY_DOWN", "SHIELD_LIGHT"
+            "WRENCH", "GEAR", "WAVE", "ACTIVITY_UP", "ACTIVITY_DOWN", "SHIELD_LIGHT",
+            "CARET_LEFT", "CARET_RIGHT"
         ]
         
         for key in all_keys:

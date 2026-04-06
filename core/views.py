@@ -246,7 +246,7 @@ class StatusContainer(Container):
             server_up_label = get_feedback(i18n, "server_uptime")
             
             manager_text = (
-                f"**{bot_manager.user.name} • {bot_manager.manager_name}**" + (f" **{get_feedback(i18n, 'update_available')}**" if manager_stats.get("has_update") else "") + "\n"
+                f"**{bot_manager.manager_name}**" + (f" **{get_feedback(i18n, 'update_available')}**" if manager_stats.get("has_update") else "") + "\n"
                 f"**{get_feedback(i18n, 'status_running')}** | PID: `{os.getpid()}`\n"
                 f"{get_feedback(i18n, 'uptime')}: {manager_stats['uptime']} | {server_up_label}: {manager_stats['host_uptime']}\n"
                 f"{get_feedback(i18n, 'branch')}: `{manager_stats['branch']}` | {host_label}: `{manager_stats['os']}`\n"
@@ -378,11 +378,12 @@ class ModernInfoView(LayoutView):
 class PageButton(discord.ui.Button):
     """A button to navigate between status pages."""
     def __init__(self, direction, cog, current_page, total_pages, i18n):
+        from core.icons import Icons
         self.direction = direction # -1 for prev, 1 for next
         self.cog = cog
-        label = "◀" if direction == -1 else "▶"
+        emoji = Icons.CARET_LEFT if direction == -1 else Icons.CARET_RIGHT
         disabled = (direction == -1 and current_page == 0) or (direction == 1 and current_page >= total_pages - 1)
-        super().__init__(style=discord.ButtonStyle.secondary, label=label, disabled=disabled)
+        super().__init__(style=discord.ButtonStyle.secondary, label=None, emoji=emoji, disabled=disabled)
 
     async def callback(self, interaction: discord.Interaction):
         if self.cog:

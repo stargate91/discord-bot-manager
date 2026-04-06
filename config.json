@@ -61,7 +61,9 @@
             "GEAR": "⚙️",
             "WAVE": "📶",
             "ACTIVITY_UP": "⬆️",
-            "ACTIVITY_DOWN": "⬇️"
+            "ACTIVITY_DOWN": "⬇️",
+            "CARET_LEFT": "<:caretleftlight:1490828889839243458>",
+            "CARET_RIGHT": "<:caretrightlight:1490828891307249806>"
         }
     },
     "ui_settings": {
