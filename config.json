@@ -72,7 +72,7 @@
     },
     "bots": {
         "1353195232675926017": {
-            "name": "CheekyElf",
+            "name": "Iris",
             "path": "/home/jupi/bots/watcher",
             "cmd": "/home/jupi/bots_env/bin/python bot.py",
             "log": "activity_bot.log",
