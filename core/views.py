@@ -408,6 +408,7 @@ class ModernStatusView(LayoutView):
             path_groups[path].append((b_id, b_info))
         
         group_list = list(path_groups.items())
+        page_size = 3
         # Calculate total pages (Page 0: 2 items, others: 3 items)
         num_groups = len(group_list)
         if num_groups <= 2:
