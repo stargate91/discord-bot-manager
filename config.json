@@ -76,7 +76,10 @@
             "path": "/home/jupi/bots/watcher",
             "cmd": "/home/jupi/bots_env/bin/python bot.py",
             "log": "activity_bot.log",
-            "systemd_service": "watcher.service"
+            "systemd_service": "watcher.service",
+            "db_files": [
+                "message_archive.db"
+            ]
         },
         "1473068888055873697": {
             "name": "Ava",

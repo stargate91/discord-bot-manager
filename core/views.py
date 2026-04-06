@@ -286,9 +286,19 @@ class StatusContainer(Container):
                 if b_info["is_running"]:
                     up_label = get_feedback(i18n, "uptime_short")
                     details = f"{cpu_label}: `{b_info['cpu']}%` | {ram_label}: `{int(b_info['ram'])} MB` | {up_label}: {b_info['uptime']} | {log_label}: `{b_info['log_size']}`"
+                    
+                    # Add DB file sizes if available
+                    if b_info.get("db_sizes"):
+                        db_parts = " | ".join([f"`{name}`: `{size}`" for name, size in b_info["db_sizes"].items()])
+                        details += f"\nDB: {db_parts}"
+                    
                     bot_text = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{details}\n`{get_feedback(i18n, 'path')}: {b_info['path']}`"
                 else:
-                    bot_text = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{log_label}: `{b_info['log_size']}`\n`{get_feedback(i18n, 'path')}: {b_info['path']}`"
+                    stopped_details = f"{log_label}: `{b_info['log_size']}`"
+                    if b_info.get("db_sizes"):
+                        db_parts = " | ".join([f"`{name}`: `{size}`" for name, size in b_info["db_sizes"].items()])
+                        stopped_details += f"\nDB: {db_parts}"
+                    bot_text = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{stopped_details}\n`{get_feedback(i18n, 'path')}: {b_info['path']}`"
                 
                 self.add_item(TextDisplay(bot_text))
                 

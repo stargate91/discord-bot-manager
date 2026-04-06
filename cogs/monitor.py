@@ -318,11 +318,27 @@ class MonitoringCog(commands.Cog):
             except:
                 pass
 
+            # Database file sizes (optional, from config)
+            db_sizes = {}
+            if bot.db_files:
+                for db_file in bot.db_files:
+                    try:
+                        db_path = os.path.join(bot.path, db_file)
+                        if os.path.exists(db_path):
+                            db_bytes = os.path.getsize(db_path)
+                            if db_bytes > 1024*1024:
+                                db_sizes[db_file] = f"{db_bytes / (1024*1024):.1f} MB"
+                            else:
+                                db_sizes[db_file] = f"{db_bytes / 1024:.1f} KB"
+                    except:
+                        pass
+
             bot_entry = {
                 "name": bot.name,
                 "path": bot.path,
                 "is_running": False,
                 "log_size": log_size_str,
+                "db_sizes": db_sizes,
                 "has_update": self.git_behind_status.get(bot_id, False)
             }
 
