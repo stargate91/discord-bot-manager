@@ -319,6 +319,18 @@ class StatusContainer(Container):
                     b_id, b_info = members[0]
                     b_name = b_info["name"]
                     
+                    # 1. Header (Status, Name, ID)
+                    bot_header = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}"
+                    self.add_item(TextDisplay(bot_header))
+                    
+                    # 2. Controls (Immediate context action)
+                    bot_row = ActionRow()
+                    bot_row.add_item(BotControlButton(emoji=restart_emoji, bot_id=b_id, bot_name=b_name, action="restart", view=parent_view))
+                    bot_row.add_item(BotControlButton(emoji=update_emoji, bot_id=b_id, bot_name=b_name, action="update", view=parent_view))
+                    bot_row.add_item(BotControlButton(emoji=stop_emoji, bot_id=b_id, bot_name=b_name, action="stop", view=parent_view))
+                    self.add_item(bot_row)
+
+                    # 3. Stats & Path
                     if b_info.get("is_running"):
                         details = f"CPU: `{b_info.get('cpu', 0)}%` | RAM: `{int(b_info.get('ram', 0))} MB` | {get_feedback(i18n, 'uptime_short')}: {b_info.get('uptime', '0s')}\nLog: `{b_info.get('log_size', '0B')}`"
                         if b_info.get("db_sizes"):
@@ -327,14 +339,8 @@ class StatusContainer(Container):
                     else:
                         details = f"{get_feedback(i18n, 'log_size')}: `{b_info.get('log_size', '0B')}`"
                         
-                    bot_text = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{details}"
-                    self.add_item(TextDisplay(bot_text))
-                    
-                    bot_row = ActionRow()
-                    bot_row.add_item(BotControlButton(emoji=restart_emoji, bot_id=b_id, bot_name=b_name, action="restart", view=parent_view))
-                    bot_row.add_item(BotControlButton(emoji=update_emoji, bot_id=b_id, bot_name=b_name, action="update", view=parent_view))
-                    bot_row.add_item(BotControlButton(emoji=stop_emoji, bot_id=b_id, bot_name=b_name, action="stop", view=parent_view))
-                    self.add_item(bot_row)
+                    bot_details = f"{details}\n`Path: {b_info['path']}`"
+                    self.add_item(TextDisplay(bot_details))
                 
                 # Add separator between groups
                 if i < len(group_list) - 1:
