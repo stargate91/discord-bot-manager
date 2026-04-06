@@ -225,92 +225,78 @@ async def handle_status_interaction(interaction: discord.Interaction, bot_id: st
         # the user can click the Global Refresh button if they want.
 
 class StatusContainer(Container):
-    """A visual container box for the status content."""
+    """A visual container box for the status content (Optimized for space)."""
     def __init__(self, bot_manager, i18n, manager_stats, bots_stats, parent_view):
         ui = getattr(bot_manager, 'ui_settings', {})
         accent = ui.get("accent_color", 0x2b2d31)
-        super().__init__(accent_color=accent) # Dynamic accent color
+        super().__init__(accent_color=accent)
         
-        # We use the Icons class which was setup in manager.py
         restart_emoji = Icons.RESTART
         update_emoji = Icons.UPDATE
         stop_emoji = Icons.STOP
 
-        # 1. Manager Header & Stats
-        cpu_label = get_feedback(i18n, "cpu")
-        ram_label = get_feedback(i18n, "ram")
-        host_label = get_feedback(i18n, "host_os")
-        free_label = get_feedback(i18n, "system_free")
-        disk_label = get_feedback(i18n, "disk")
-        swap_label = get_feedback(i18n, "swap")
-        server_up_label = get_feedback(i18n, "server_uptime")
-        log_label = get_feedback(i18n, "log_size")
-        update_available_msg = get_feedback(i18n, "update_available")
-        
-        manager_up_alert = f" **{update_available_msg}**" if manager_stats.get("has_update") else ""
-        
+        # 1. Manager Statistics
         manager_text = (
-            f"**{bot_manager.manager_name}**{manager_up_alert}\n"
+            f"**{bot_manager.manager_name}**" + (f" **{get_feedback(i18n, 'update_available')}**" if manager_stats.get("has_update") else "") + "\n"
             f"**{get_feedback(i18n, 'status_running')}**\n"
-            f"{get_feedback(i18n, 'uptime')}: {manager_stats['uptime']} | {server_up_label}: {manager_stats['host_uptime']}\n"
+            f"{get_feedback(i18n, 'uptime')}: {manager_stats['uptime']} | {get_feedback(i18n, 'server_uptime')}: {manager_stats['host_uptime']}\n"
             f"{get_feedback(i18n, 'branch')}: `{manager_stats['branch']}`\n"
-            f"{host_label}: `{manager_stats['os']}`\n"
-            f"{get_feedback(i18n, 'resources')}: {cpu_label}: `{manager_stats['cpu']}%` | {ram_label}: `{int(manager_stats['ram'])} MB` | Net: `{manager_stats['net']}`\n"
-            f"{free_label}: CPU: `{int(manager_stats['sys_cpu_free'])}%` | {ram_label}: `{int(manager_stats['sys_ram_free'])} MB` | {disk_label}: `{int(manager_stats['sys_disk_free'])} GB` | {swap_label}: `{manager_stats['swap']}%`"
+            f"{get_feedback(i18n, 'resources')}: CPU: `{manager_stats['cpu']}%` | RAM: `{int(manager_stats['ram'])} MB` | Net: `{manager_stats['net']}`"
         )
         self.add_item(TextDisplay(manager_text))
         
-        # Manager Buttons Row
         mgr_row = ActionRow()
-
-        # Manager Restart
         mgr_row.add_item(BotControlButton(emoji=restart_emoji, bot_id="manager", action="restart", view=parent_view))
-        # Manager Update
         mgr_row.add_item(BotControlButton(emoji=update_emoji, bot_id="manager", action="update", view=parent_view))
-        # Manager Stop
         mgr_row.add_item(BotControlButton(emoji=stop_emoji, bot_id="manager", action="stop", view=parent_view))
-        
         self.add_item(mgr_row)
         self.add_item(Separator(visible=True, spacing=discord.enums.SeparatorSpacing.large))
 
-        # 2. Managed Bots Sections
+        # 2. Managed Bots Section
         if bots_stats:
-            self.add_item(TextDisplay(f"**{get_feedback(i18n, 'bots_status_header')}**"))
-            
-            # We keep track of the indexed for separator logic
-            bot_list = list(bots_stats.items())
-            for i, (b_id, b_info) in enumerate(bot_list):
-                b_name = b_info["name"]
-                up_alert = f" **{update_available_msg}**" if b_info.get("has_update") else ""
+            # Group bots by path
+            path_groups = {}
+            for b_id, b_info in bots_stats.items():
+                path = b_info["path"]
+                if path not in path_groups: path_groups[path] = []
+                path_groups[path].append((b_id, b_info))
+
+            group_list = list(path_groups.items())
+            for i, (path, members) in enumerate(group_list):
+                header_prefix = f"\n**{get_feedback(i18n, 'bots_status_header')}**\n" if i == 0 else ""
                 
-                if b_info["is_running"]:
-                    up_label = get_feedback(i18n, "uptime_short")
-                    details = f"{cpu_label}: `{b_info['cpu']}%` | {ram_label}: `{int(b_info['ram'])} MB` | {up_label}: {b_info['uptime']} | {log_label}: `{b_info['log_size']}`"
+                # Check for updates in any group member
+                has_update = any(m[1].get("has_update") for m in members)
+                up_alert = f" **{get_feedback(i18n, 'update_available')}**" if has_update else ""
+
+                if len(members) > 1:
+                    # Cluster View (Super Optimized - 3 buttons total)
+                    statuses = " | ".join([f"**{m[1]['name']}**: {m[1]['status']}" for m in members])
+                    cluster_text = f"{header_prefix}{statuses}{up_alert}\n`Cluster: {os.path.basename(path)} | Path: {path}`"
+                    self.add_item(TextDisplay(cluster_text))
                     
-                    # Add DB file sizes if available
-                    if b_info.get("db_sizes"):
-                        db_parts = " | ".join([f"`{name}`: `{size}`" for name, size in b_info["db_sizes"].items()])
-                        details += f"\nDB: {db_parts}"
-                    
-                    bot_text = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{details}\n`{get_feedback(i18n, 'path')}: {b_info['path']}`"
+                    cluster_row = ActionRow()
+                    primary_id = members[0][0]
+                    primary_name = members[0][1]["name"]
+                    cluster_row.add_item(BotControlButton(emoji=restart_emoji, bot_id=primary_id, bot_name=primary_name, action="restart", view=parent_view))
+                    cluster_row.add_item(BotControlButton(emoji=update_emoji, bot_id=primary_id, bot_name=primary_name, action="update", view=parent_view))
+                    cluster_row.add_item(BotControlButton(emoji=stop_emoji, bot_id=primary_id, bot_name=primary_name, action="stop", view=parent_view))
+                    self.add_item(cluster_row)
                 else:
-                    stopped_details = f"{log_label}: `{b_info['log_size']}`"
-                    if b_info.get("db_sizes"):
-                        db_parts = " | ".join([f"`{name}`: `{size}`" for name, size in b_info["db_sizes"].items()])
-                        stopped_details += f"\nDB: {db_parts}"
-                    bot_text = f"**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n{stopped_details}\n`{get_feedback(i18n, 'path')}: {b_info['path']}`"
+                    # Single Bot View
+                    b_id, b_info = members[0]
+                    b_name = b_info["name"]
+                    bot_text = f"{header_prefix}**{b_info['status']} • {b_name}** ({b_id}){up_alert}\n`{b_info['log_size']} | {b_info['uptime']} | CPU: {b_info['cpu']}% | RAM: {int(b_info['ram'])} MB`"
+                    self.add_item(TextDisplay(bot_text))
+                    
+                    bot_row = ActionRow()
+                    bot_row.add_item(BotControlButton(emoji=restart_emoji, bot_id=b_id, bot_name=b_name, action="restart", view=parent_view))
+                    bot_row.add_item(BotControlButton(emoji=update_emoji, bot_id=b_id, bot_name=b_name, action="update", view=parent_view))
+                    bot_row.add_item(BotControlButton(emoji=stop_emoji, bot_id=b_id, bot_name=b_name, action="stop", view=parent_view))
+                    self.add_item(bot_row)
                 
-                self.add_item(TextDisplay(bot_text))
-                
-                bot_row = ActionRow()
-                bot_row.add_item(BotControlButton(emoji=restart_emoji, bot_id=b_id, bot_name=b_name, action="restart", view=parent_view))
-                bot_row.add_item(BotControlButton(emoji=update_emoji, bot_id=b_id, bot_name=b_name, action="update", view=parent_view))
-                bot_row.add_item(BotControlButton(emoji=stop_emoji, bot_id=b_id, bot_name=b_name, action="stop", view=parent_view))
-                
-                self.add_item(bot_row)
-                
-                # Only add separator if NOT the last bot
-                if i < len(bot_list) - 1:
+                # Add separator between groups
+                if i < len(group_list) - 1:
                     self.add_item(Separator())
         else:
             self.add_item(TextDisplay(f"*{i18n.get('error_no_bots_configured', 'No bots configured.')}*"))
