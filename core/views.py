@@ -332,15 +332,17 @@ class StatusContainer(Container):
 
                     # 3. Stats & Path
                     if b_info.get("is_running"):
-                        details = f"CPU: `{b_info.get('cpu', 0)}%` | RAM: `{int(b_info.get('ram', 0))} MB` | {get_feedback(i18n, 'uptime_short')}: {b_info.get('uptime', '0s')}\nLog: `{b_info.get('log_size', '0B')}`"
+                        details = f"CPU: `{b_info.get('cpu', 0)}%` | RAM: `{int(b_info.get('ram', 0))} MB` | {get_feedback(i18n, 'uptime_short')}: {b_info.get('uptime', '0s')}"
+                        details += f"\n`Path: {b_info['path']}`"
+                        details += f"\nLog: `{b_info.get('log_size', '0B')}`"
                         if b_info.get("db_sizes"):
                             db_parts = " | ".join([f"`{name}`: `{size}`" for name, size in b_info["db_sizes"].items()])
                             details += f" | DB: {db_parts}"
                     else:
-                        details = f"{get_feedback(i18n, 'log_size')}: `{b_info.get('log_size', '0B')}`"
+                        details = f"`Path: {b_info['path']}`"
+                        details += f"\n{get_feedback(i18n, 'log_size')}: `{b_info.get('log_size', '0B')}`"
                         
-                    bot_details = f"{details}\n`Path: {b_info['path']}`"
-                    self.add_item(TextDisplay(bot_details))
+                    self.add_item(TextDisplay(details))
                 
                 # Add separator between groups
                 if i < len(group_list) - 1:
