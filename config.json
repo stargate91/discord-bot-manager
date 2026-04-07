@@ -4,7 +4,7 @@
         "access_control": {
             "roles": {
                 "admin": "1486685311919460402",
-                "tester": "1486516144687812750"
+                "tester": "1283594037802176546"
             },
             "channels": {
                 "admin": "1486516075905417216",
@@ -119,4 +119,5 @@
             "log": "logs/discord_event_bot.log",
             "systemd_service": "eventbot.service"
         }
-    }}
+    }
+}
