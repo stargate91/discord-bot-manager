@@ -39,11 +39,9 @@ async def handle_status_interaction(interaction: discord.Interaction, bot_id: st
     
     # 2. Determine Required Level for Action
     required_level = AccessLevel.MECHANIC
-    if action == "update" or action.endswith("-update"):
-        required_level = AccessLevel.BOSS
-    elif action == "restart" or action.endswith("-restart"):
+    if action == "restart" or action.endswith("-restart"):
         required_level = AccessLevel.INSPECTOR
-    elif action == "stop" or action.endswith("-stop"):
+    elif action == "stop" or action.endswith("-stop") or action == "update" or action.endswith("-update"):
         required_level = AccessLevel.MECHANIC
     
     # 3. Check Level Permissions
