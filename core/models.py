@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from typing import Optional, List
 
@@ -16,15 +17,27 @@ class BotConfig:
 
     @classmethod
     def from_dict(cls, bot_id: str, data: dict, default_log: str = "bot.log") -> 'BotConfig':
-        """This function takes a dictionary and turns it into a BotConfig object."""
-        # We use .get() so the bot doesn't crash if a piece of information is missing
+        """This function takes a dictionary and turns it into a BotConfig object.
+        
+        Automatically selects platform-specific 'path_win'/'cmd_win' on Windows,
+        falling back to the base 'path'/'cmd' fields if no override exists.
+        """
+        is_windows = os.name == 'nt'
+        
+        # Pick the right path and cmd for the current platform
+        path = data.get("path_win", data.get("path", ".")) if is_windows else data.get("path", ".")
+        cmd = data.get("cmd_win", data.get("cmd", "")) if is_windows else data.get("cmd", "")
+        
+        # systemd_service is Linux-only, ignore it on Windows
+        systemd_service = None if is_windows else data.get("systemd_service")
+        
         return cls(
             id=bot_id,
             name=data.get("name", "Unknown"),
-            path=data.get("path", "."),
-            cmd=data.get("cmd", ""),
+            path=path,
+            cmd=cmd,
             log=data.get("log", default_log),
-            systemd_service=data.get("systemd_service"),
+            systemd_service=systemd_service,
             description=data.get("description"),
             git_branch=data.get("git_branch"),
             db_files=data.get("db_files", [])

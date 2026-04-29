@@ -76,7 +76,9 @@
         "1353195232675926017": {
             "name": "Iris",
             "path": "/home/jupi/bots/watcher",
+            "path_win": "E:\\projects\\python\\discord-activity-watcher-bot",
             "cmd": "/home/jupi/bots_env/bin/python bot.py",
+            "cmd_win": "python bot.py",
             "log": "activity_bot.log",
             "systemd_service": "watcher.service",
             "db_files": [
@@ -86,21 +88,27 @@
         "1473068888055873697": {
             "name": "Ava",
             "path": "/home/jupi/bots/radio",
+            "path_win": "E:\\projects\\python\\discord-music-bot",
             "cmd": "/home/jupi/bots_env/bin/python main.py 1",
+            "cmd_win": "python main.py 1",
             "log": "data/1_radio.log",
             "systemd_service": "radio-ava.service"
         },
         "1483519378841665728": {
             "name": "Zea",
             "path": "/home/jupi/bots/radio",
+            "path_win": "E:\\projects\\python\\discord-music-bot",
             "cmd": "/home/jupi/bots_env/bin/python main.py 2",
+            "cmd_win": "python main.py 2",
             "log": "data/2_radio.log",
             "systemd_service": "radio-zea.service"
         },
         "1441871407511240724": {
             "name": "Botzilla Poker",
             "path": "/home/jupi/bots/poker",
+            "path_win": "E:\\projects\\python\\botzilla-poker",
             "cmd": "/home/jupi/bots_env/bin/python run.py",
+            "cmd_win": "python run.py",
             "log": "botzilla.log",
             "systemd_service": "poker.service",
             "git_branch": "origin/master"
@@ -108,16 +116,38 @@
         "1489908793780338688": {
             "name": "Nova",
             "path": "/home/jupi/bots/feed",
+            "path_win": "E:\\projects\\python\\discord-feed-bot",
             "cmd": "/home/jupi/bots_env/bin/python main.py",
+            "cmd_win": "python main.py",
             "log": "data/feed_bot.log",
             "systemd_service": "feedbot.service"
         },
         "1490237426424348752": {
             "name": "Nexus",
             "path": "/home/jupi/bots/event",
+            "path_win": "E:\\projects\\python\\discord-event-bot",
             "cmd": "/home/jupi/bots_env/bin/python main.py",
+            "cmd_win": "python main.py",
             "log": "logs/discord_event_bot.log",
             "systemd_service": "eventbot.service"
+        },
+        "1493035706056966365": {
+            "name": "Discord MCP",
+            "path": "/home/jupi/bots/discord-mcp-src",
+            "path_win": "",
+            "cmd": "/home/jupi/.sdkman/candidates/java/current/bin/java -jar target/discord-mcp-1.0.0.jar",
+            "cmd_win": "",
+            "log": "",
+            "systemd_service": "discord-mcp.service"
+        },
+        "1493035706056966366": {
+            "name": "Discord Copilot",
+            "path": "/home/jupi/bots/discord-management-copilot",
+            "path_win": "",
+            "cmd": ".venv/bin/python main_web.py",
+            "cmd_win": ".",
+            "log": "",
+            "systemd_service": "discord-ai-agent.service"
         }
     }
 }
